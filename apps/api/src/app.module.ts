@@ -2,7 +2,15 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook } from './entities';
+import {
+  Fixture,
+  FixtureMetadata,
+  Pool,
+  Bet,
+  Payout,
+  Score,
+  Webhook,
+} from './db/entities/entities';
 
 @Module({
   imports: [
@@ -14,9 +22,19 @@ import { Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook } from './e
       password: process.env.DB_PASSWORD || 'password',
       database: process.env.DB_NAME || 'varbets',
       autoLoadEntities: true,
-      synchronize: true, 
+      synchronize: true,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      migrations: [__dirname + '/db/migrations/**/*{.ts,.js}'],
     }),
-    TypeOrmModule.forFeature([Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook]),
+    TypeOrmModule.forFeature([
+      Fixture,
+      FixtureMetadata,
+      Pool,
+      Bet,
+      Payout,
+      Score,
+      Webhook,
+    ]),
   ],
   controllers: [AppController],
   providers: [AppService],

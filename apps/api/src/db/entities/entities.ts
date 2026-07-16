@@ -1,169 +1,175 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('fixtures')
 export class Fixture {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: 'timestamp' })
-  Timestamp: Date;
+  Timestamp!: Date;
 
   @Column({ type: 'timestamp' })
-  StartTime: Date;
+  StartTime!: Date;
 
   @Column()
-  Competition: string;
+  Competition!: string;
 
   @Column()
-  CompetitionId: string;
+  CompetitionId!: string;
 
   @Column()
-  FixtureGroupId: string;
+  FixtureGroupId!: string;
 
   @Column()
-  Participant1Id: string;
+  Participant1Id!: string;
 
   @Column()
-  Participant1: string;
+  Participant1!: string;
 
   @Column()
-  Participant2Id: string;
+  Participant2Id!: string;
 
   @Column()
-  Participant2: string;
+  Participant2!: string;
 
   @Column()
-  FixtureId: string;
+  FixtureId!: string;
 
   @Column()
-  Participant1IsHome: boolean;
+  Participant1IsHome!: boolean;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
 
 @Entity('fixtures_metadata')
 export class FixtureMetadata {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  fixture_id: number;
+  fixture_id!: number;
 
   @Column()
-  active: boolean;
+  active!: boolean;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
 
 @Entity('pools')
 export class Pool {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  fixture_id: number;
+  fixture_id!: number;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
-  amount: number;
+  amount!: number;
 
   @Column({ default: true })
-  acceptingBets: boolean;
+  acceptingBets!: boolean;
 
   @Column({ default: false })
-  paidOut: boolean;
+  paidOut!: boolean;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
 
 @Entity('bets')
 export class Bet {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  pool_id: number;
+  pool_id!: number;
 
   @Column()
-  wallet_address: string;
+  wallet_address!: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
-  amount: number;
+  amount!: number;
 
   @Column()
-  option: string;
+  option!: string;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
 
 @Entity('payouts')
 export class Payout {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  poolId: number;
+  poolId!: number;
 
   @Column()
-  wallet_address: string;
+  wallet_address!: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
-  amount: number;
+  amount!: number;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
 
 @Entity('scores')
 export class Score {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  fixtureId: number;
+  fixtureId!: number;
 
   @Column()
-  Action: string;
+  Action!: string;
 
   @Column({ type: 'jsonb' })
-  Data: any;
+  Data!: any;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
 
 @Entity('webhooks')
 export class Webhook {
   @PrimaryGeneratedColumn('uuid')
-  id: string; // UUIDv7 handled by app logic or DB
+  id!: string; // UUIDv7 handled by app logic or DB
 
   @Column({ type: 'jsonb' })
-  config: any;
+  config!: any;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }
