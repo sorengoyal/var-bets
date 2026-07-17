@@ -12,6 +12,10 @@ Each tick:
 6. records a simulated Polymarket hedge attempt and rejects every tenth order to model venue liquidity/fill risk;
 7. closes and settles the pool as `NO_GOAL` at `59:45`.
 
+Quotes target a `20%` theoretical gross margin, which requires a `25%` base overround. The two quoted implied probabilities therefore begin with a combined target of `125%`, before inventory pressure and hard liability caps alter the side-specific prices. This is a pricing target, not a guarantee of 20% realized profit after hedge costs, slippage, rejection mix, and settlement outcome.
+
+The replay hedges `15%` of each accepted order's uncovered payout liability. This keeps hedge orders visible while avoiding the unrealistic cost of attempting to reinsure nearly half of every individual order. A production adapter should hedge net book exposure rather than copy this demonstration ratio.
+
 ## Run
 
 ```bash

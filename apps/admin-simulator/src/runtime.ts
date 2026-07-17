@@ -36,6 +36,7 @@ const MODEL = {
   worstProfit: -429.8981784263222,
   lossProbability: 0.0028,
   p99Liability: 1000,
+  baseOverround: 0.25,
   maximumUnhedgedLoss: 1000,
   minimumDecimalOdds: 1.05,
 };
@@ -121,7 +122,7 @@ export class SimulationRuntime {
     this.hedging = new SimulatedPolymarketHedge();
     this.engine = new BetExecutionEngine({
       config: {
-        baseOverround: 0.07,
+        baseOverround: MODEL.baseOverround,
         inventorySensitivity: 0.08,
         minimumDecimalOdds: MODEL.minimumDecimalOdds,
         maximumDecimalOdds: 20,

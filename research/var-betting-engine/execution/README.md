@@ -66,17 +66,17 @@ sequenceDiagram
 
 ### Configuration inputs
 
-| Variable                | Meaning                                            | Current example |
-| ----------------------- | -------------------------------------------------- | --------------: |
-| `base_overround`        | Base house margin added to implied probabilities   |          `0.07` |
-| `inventory_sensitivity` | How strongly odds respond to payout imbalance      |          `0.08` |
-| `minimum_decimal_odds`  | Reject instead of offering odds below this value   |          `1.05` |
-| `maximum_decimal_odds`  | Maximum payout multiple displayed                  |          `20.0` |
-| `minimum_stake`         | Smallest accepted stake                            |            `$1` |
-| `maximum_stake`         | Largest stake before dynamic risk checks           |          `$500` |
-| `maximum_unhedged_loss` | Hard book loss limit before hedge payoff           |        `$1,000` |
-| `quote_ttl_ms`          | Time during which displayed odds remain executable |        `500 ms` |
-| `require_hedge_fill`    | Reject and refund when the hedge does not fill     |          `true` |
+| Variable                | Meaning                                             | Current example |
+| ----------------------- | --------------------------------------------------- | --------------: |
+| `base_overround`        | Base house overround added to implied probabilities |          `0.25` |
+| `inventory_sensitivity` | How strongly odds respond to payout imbalance       |          `0.08` |
+| `minimum_decimal_odds`  | Reject instead of offering odds below this value    |          `1.05` |
+| `maximum_decimal_odds`  | Maximum payout multiple displayed                   |          `20.0` |
+| `minimum_stake`         | Smallest accepted stake                             |            `$1` |
+| `maximum_stake`         | Largest stake before dynamic risk checks            |          `$500` |
+| `maximum_unhedged_loss` | Hard book loss limit before hedge payoff            |        `$1,000` |
+| `quote_ttl_ms`          | Time during which displayed odds remain executable  |        `500 ms` |
+| `require_hedge_fill`    | Reject and refund when the hedge does not fill      |          `true` |
 
 `maximum_unhedged_loss` is a loss cap, not a guaranteed profit. Set it to zero only when the hedge model and execution guarantees support that constraint. Early one-sided bets cannot offer decimal odds above `1.00` while simultaneously guaranteeing profit without outside liquidity or a hedge.
 
@@ -180,6 +180,14 @@ decimal_odds = 1 / selected_q
 ```
 
 More Goal exposure therefore lowers Goal payouts and improves No-Goal pricing. The reverse occurs when No-Goal exposure dominates.
+
+The base overround and theoretical gross margin are related by:
+
+```text
+theoretical_gross_margin = overround / (1 + overround)
+```
+
+Therefore a `20%` target gross margin requires `base_overround = 0.25`, producing a `125%` combined implied probability before inventory and risk-cap adjustments.
 
 Implementation: `BetExecutionEngine.inventoryAdjustedOdds()`.
 

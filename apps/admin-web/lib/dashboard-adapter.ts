@@ -83,6 +83,7 @@ const initialSnapshot: DashboardSnapshot = {
     worstProfit: -429.8982,
     lossProbability: 0.0028,
     p99Liability: 1000,
+    baseOverround: 0.25,
     maximumUnhedgedLoss: 1000,
     minimumDecimalOdds: 1.05,
   },

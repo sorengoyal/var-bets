@@ -1,5 +1,5 @@
 {
-  "base_overround": 0.07,
+  "base_overround": 0.25,
   "inventory_sensitivity": 0.08,
   "minimum_decimal_odds": 1.05,
   "maximum_decimal_odds": 20.0,

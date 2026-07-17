@@ -522,6 +522,22 @@ export default function AdminDashboard() {
             </article>
             <article>
               <div>
+                <strong>Target gross margin</strong>
+                <small>
+                  {(model.baseOverround * 100).toFixed(0)}% overround before
+                  inventory and caps
+                </small>
+              </div>
+              <span>
+                {(
+                  (model.baseOverround / (1 + model.baseOverround)) *
+                  100
+                ).toFixed(0)}
+                % margin
+              </span>
+            </article>
+            <article>
+              <div>
                 <strong>Minimum quote</strong>
                 <small>Lowest permitted decimal odds</small>
               </div>

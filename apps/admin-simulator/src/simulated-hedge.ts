@@ -29,7 +29,7 @@ export class SimulatedPolymarketHedge implements HedgePort {
       0,
       order.potentialPayoutCents - order.stakeCents,
     );
-    const grossPayoffCents = Math.round(uncoveredLiability * 0.42);
+    const grossPayoffCents = Math.round(uncoveredLiability * 0.15);
     const premiumCents = Math.round(
       grossPayoffCents * selectedProbability * 1.006,
     );
