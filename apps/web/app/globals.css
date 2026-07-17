@@ -86,14 +86,22 @@ a:focus-visible {
 
 .landingContent > .brand {
   margin-bottom: 42px;
+  font-size: 32px;
+}
+
+.landingContent > .brand .brandMark {
+  width: 44px;
+  height: 44px;
+  margin-right: 10px;
+  font-size: 29px;
 }
 
 .landingContent h1 {
   max-width: 430px;
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(42px, 11.5vw, 58px);
-  line-height: 0.95;
+  font-size: clamp(32px, 8.6vw, 44px);
+  line-height: 1;
   letter-spacing: -0.025em;
   text-transform: uppercase;
   margin-bottom: 25px;
@@ -122,6 +130,13 @@ a:focus-visible {
   color: #77707d;
   font-size: 8px;
   text-align: center;
+}
+
+.landingWallet .wallet-adapter-button,
+.landingWallet .walletPlaceholder,
+.landingWallet .demoWalletButton {
+  min-height: 48px;
+  font-size: 12px !important;
 }
 
 .landingMatches {

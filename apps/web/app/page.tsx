@@ -259,24 +259,6 @@ export default function Home() {
             </div>
             <small>Includes 1,000 USDC for testing</small>
           </div>
-
-          <div className="landingMatches">
-            <span>NEXT MATCHES</span>
-            <article>
-              <div>
-                <strong>France vs England</strong>
-                <small>World Cup · Tomorrow 15:00</small>
-              </div>
-              <b>›</b>
-            </article>
-            <article>
-              <div>
-                <strong>Spain vs Argentina</strong>
-                <small>World Cup · Tomorrow 19:30</small>
-              </div>
-              <b>›</b>
-            </article>
-          </div>
         </section>
         <p className="entryLegal">18+ · Play responsibly</p>
       </main>
