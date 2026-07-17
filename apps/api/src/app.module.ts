@@ -7,7 +7,16 @@ import { PoolsModule } from './modules/pools/pools.module';
 import { BetsModule } from './modules/bets/bets.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { CronModule } from './modules/cron/cron.module';
-import { Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook } from './db/entities/entities';
+import { EventsModule } from './modules/events/events.module';
+import {
+  Fixture,
+  FixtureMetadata,
+  Pool,
+  Bet,
+  Payout,
+  Score,
+  Webhook,
+} from './db/entities/entities';
 
 @Module({
   imports: [
@@ -19,16 +28,25 @@ import { Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook } from './d
       password: process.env.DB_PASSWORD || 'password',
       database: process.env.DB_NAME || 'varbets',
       autoLoadEntities: true,
-      synchronize: true, 
+      synchronize: true,
       entities: [__dirname + '/db/entities/**/*{.ts,.js}'],
       migrations: [__dirname + '/db/migrations/**/*{.ts,.js}'],
     }),
-    TypeOrmModule.forFeature([Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook]),
+    TypeOrmModule.forFeature([
+      Fixture,
+      FixtureMetadata,
+      Pool,
+      Bet,
+      Payout,
+      Score,
+      Webhook,
+    ]),
     FixturesModule,
     PoolsModule,
     BetsModule,
     PayoutsModule,
     CronModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

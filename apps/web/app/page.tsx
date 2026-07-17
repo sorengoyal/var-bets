@@ -1,62 +1,40 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { io } from "socket.io-client";
+
+import { matchClockAt, quoteAt, reviewPhaseAt, SIMULATION } from "./simulation";
 
 type Side = "GOAL" | "NO_GOAL";
-type MarketState = "OPEN" | "SETTLED";
 
-type PlacedBet = {
+type BetRecord = {
   id: number;
+  poolId: number;
   side: Side;
-  stake: number;
+  amount: number;
   odds: number;
   payout: number;
   placedAt: string;
 };
+
+type PayoutRecord = {
+  id: number;
+  poolId: number;
+  amount: number;
+  status: "CONFIRMED";
+};
+
+const LIVE_POOL_ID = 20260707;
+const STARTING_POOL = 2840;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 2,
 });
-
-function Icon({
-  name,
-}: {
-  name: "wallet" | "volume" | "signal" | "check" | "chevron";
-}) {
-  const paths = {
-    wallet: (
-      <>
-        <path d="M3 6.5h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h11" />
-        <path d="M15 11h5v4h-5a2 2 0 0 1 0-4Z" />
-      </>
-    ),
-    volume: (
-      <>
-        <path d="M11 5 6.5 9H3v6h3.5L11 19V5Z" />
-        <path d="M15 9.5a4 4 0 0 1 0 5" />
-        <path d="M17.8 7a7.5 7.5 0 0 1 0 10" />
-      </>
-    ),
-    signal: (
-      <>
-        <path d="M4 17v2" />
-        <path d="M9 13v6" />
-        <path d="M14 9v10" />
-        <path d="M19 5v14" />
-      </>
-    ),
-    check: <path d="m5 12 4 4L19 6" />,
-    chevron: <path d="m9 18 6-6-6-6" />,
-  };
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {paths[name]}
-    </svg>
-  );
-}
 
 function Brand() {
   return (
@@ -68,120 +46,193 @@ function Brand() {
   );
 }
 
+function percent(value: number) {
+  return `${value.toFixed(1)}%`;
+}
+
+function shortAddress(address: string) {
+  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+}
+
 export default function Home() {
+  const { connected, publicKey } = useWallet();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const settlementHandled = useRef(false);
   const [hasEntered, setHasEntered] = useState(false);
-  const [stake, setStake] = useState("25");
-  const [goalOdds, setGoalOdds] = useState(1.72);
-  const [noGoalOdds, setNoGoalOdds] = useState(2.1);
-  const [oddsTick, setOddsTick] = useState(0);
-  const [balance, setBalance] = useState(1250);
-  const [bets, setBets] = useState<PlacedBet[]>([]);
-  const [toastBet, setToastBet] = useState<PlacedBet | null>(null);
-  const [submitting, setSubmitting] = useState<Side | null>(null);
-  const [marketState, setMarketState] = useState<MarketState>("OPEN");
-  const [result, setResult] = useState<Side | null>(null);
-  const [feedState, setFeedState] = useState<"LIVE" | "STALE">("LIVE");
-  const [demoOpen, setDemoOpen] = useState(false);
-  const marketRef = useRef<HTMLElement>(null);
-
-  const stakeNumber = Number(stake);
-  const validStake =
-    Number.isFinite(stakeNumber) && stakeNumber >= 1 && stakeNumber <= balance;
-
-  useEffect(() => {
-    if (!hasEntered || marketState !== "OPEN" || feedState !== "LIVE") return;
-
-    const timer = window.setInterval(() => {
-      setGoalOdds((current) =>
-        Number(
-          Math.max(1.05, current + (Math.random() - 0.48) * 0.12).toFixed(2),
-        ),
-      );
-      setNoGoalOdds((current) =>
-        Number(
-          Math.max(1.05, current + (Math.random() - 0.52) * 0.12).toFixed(2),
-        ),
-      );
-      setOddsTick((tick) => tick + 1);
-    }, 2200);
-
-    return () => window.clearInterval(timer);
-  }, [feedState, hasEntered, marketState]);
-
-  useEffect(() => {
-    if (!toastBet) return;
-    const timer = window.setTimeout(() => setToastBet(null), 3600);
-    return () => window.clearTimeout(timer);
-  }, [toastBet]);
-
-  const selectedPayouts = useMemo(
-    () => ({
-      GOAL: validStake ? stakeNumber * goalOdds : 0,
-      NO_GOAL: validStake ? stakeNumber * noGoalOdds : 0,
-    }),
-    [goalOdds, noGoalOdds, stakeNumber, validStake],
+  const [elapsed, setElapsed] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [poolAmount, setPoolAmount] = useState(STARTING_POOL);
+  const [bets, setBets] = useState<BetRecord[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
+  const [betSlipOpen, setBetSlipOpen] = useState(false);
+  const [selectedSide, setSelectedSide] = useState<Side>("NO_GOAL");
+  const [stake, setStake] = useState("10");
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [socketState, setSocketState] = useState<"LIVE" | "SIMULATED">(
+    API_URL ? "LIVE" : "SIMULATED",
   );
+
+  const walletAddress = publicKey?.toBase58() ?? "";
+  const quote = useMemo(() => quoteAt(elapsed), [elapsed]);
+  const reviewPhase = useMemo(() => reviewPhaseAt(elapsed), [elapsed]);
+  const acceptingBets = elapsed < SIMULATION.decisionAt;
+  const score = acceptingBets ? "0 – 2" : "0 – 1";
+  const matchClock = matchClockAt(elapsed);
+  const secondsRemaining = Math.max(
+    0,
+    Math.ceil(SIMULATION.decisionAt - elapsed),
+  );
+  const stakeNumber = Number(stake);
+  const selectedOdds =
+    selectedSide === "GOAL" ? quote.goalOdds : quote.noGoalOdds;
+  const validStake = Number.isFinite(stakeNumber) && stakeNumber > 0;
+  const potentialPayout = validStake ? stakeNumber * selectedOdds : 0;
+
+  useEffect(() => {
+    if (!hasEntered) return;
+    void videoRef.current?.play().catch(() => setIsPlaying(false));
+  }, [hasEntered]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 3600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!API_URL) return;
+
+    const socket = io(API_URL, {
+      transports: ["websocket"],
+      reconnectionAttempts: 3,
+    });
+
+    socket.on("connect", () => setSocketState("LIVE"));
+    socket.on("connect_error", () => setSocketState("SIMULATED"));
+    socket.on(
+      "poolUpdated",
+      (pool: {
+        id?: number;
+        amount?: number | string;
+        acceptingBets?: boolean;
+      }) => {
+        const nextAmount = Number(pool.amount);
+        if (pool.id === LIVE_POOL_ID && Number.isFinite(nextAmount)) {
+          setPoolAmount(nextAmount);
+        }
+      },
+    );
+    socket.on(
+      "payoutExecuted",
+      (payout: { id: number; poolId: number; amount: number }) => {
+        if (payout.poolId !== LIVE_POOL_ID) return;
+        setPayouts((current) => [
+          {
+            id: payout.id,
+            poolId: payout.poolId,
+            amount: Number(payout.amount),
+            status: "CONFIRMED",
+          },
+          ...current,
+        ]);
+      },
+    );
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (acceptingBets || settlementHandled.current) return;
+    settlementHandled.current = true;
+
+    const winnings = bets
+      .filter((bet) => bet.side === "NO_GOAL")
+      .reduce((total, bet) => total + bet.payout, 0);
+
+    if (winnings > 0) {
+      setPayouts((current) => [
+        {
+          id: Date.now(),
+          poolId: LIVE_POOL_ID,
+          amount: winnings,
+          status: "CONFIRMED",
+        },
+        ...current,
+      ]);
+      setToast(`VAR settled: ${money.format(winnings)} payout confirmed`);
+    } else {
+      setToast("Market closed automatically: NO GOAL");
+    }
+    setBetSlipOpen(false);
+  }, [acceptingBets, bets]);
 
   function enterMarket() {
     setHasEntered(true);
-    window.setTimeout(
-      () => marketRef.current?.scrollIntoView({ behavior: "smooth" }),
-      50,
-    );
   }
 
-  function placeBet(side: Side) {
-    if (
-      !validStake ||
-      marketState !== "OPEN" ||
-      feedState !== "LIVE" ||
-      submitting
-    )
-      return;
-    setSubmitting(side);
-    const lockedOdds = side === "GOAL" ? goalOdds : noGoalOdds;
+  function openBetSlip(side: Side) {
+    if (!acceptingBets) return;
+    setSelectedSide(side);
+    setBetSlipOpen(true);
+  }
 
-    window.setTimeout(() => {
-      const bet: PlacedBet = {
+  async function placeBet() {
+    if (!connected || !walletAddress || !validStake || !acceptingBets) return;
+    setSubmitting(true);
+    const lockedOdds = selectedOdds;
+
+    try {
+      if (API_URL) {
+        const response = await fetch(`${API_URL}/api/bets`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            poolId: LIVE_POOL_ID,
+            wallet_address: walletAddress,
+            amount: stakeNumber,
+            option: selectedSide,
+          }),
+        });
+        if (!response.ok) throw new Error("Bet request failed");
+      }
+
+      const bet: BetRecord = {
         id: Date.now(),
-        side,
-        stake: stakeNumber,
+        poolId: LIVE_POOL_ID,
+        side: selectedSide,
+        amount: stakeNumber,
         odds: lockedOdds,
         payout: stakeNumber * lockedOdds,
-        placedAt: new Date().toLocaleTimeString([], {
-          minute: "2-digit",
-          second: "2-digit",
-        }),
+        placedAt: matchClock,
       };
       setBets((current) => [bet, ...current]);
-      setBalance((current) => current - stakeNumber);
-      setToastBet(bet);
-      setSubmitting(null);
-    }, 480);
+      setPoolAmount((current) => current + stakeNumber);
+      setToast(
+        `${selectedSide === "GOAL" ? "Confirmed" : "Overturned"} bet accepted at ${lockedOdds.toFixed(2)}`,
+      );
+      setBetSlipOpen(false);
+    } catch {
+      setToast("Bet could not be submitted. Check the API connection.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  function settle(decision: Side) {
-    if (marketState === "SETTLED") return;
-    const winnings = bets
-      .filter((bet) => bet.side === decision)
-      .reduce((total, bet) => total + bet.payout, 0);
-    setBalance((current) => current + winnings);
-    setResult(decision);
-    setMarketState("SETTLED");
-    setDemoOpen(false);
-  }
-
-  function resetDemo() {
-    setStake("25");
-    setGoalOdds(1.72);
-    setNoGoalOdds(2.1);
-    setBalance(1250);
+  function replaySimulation() {
+    settlementHandled.current = false;
+    setElapsed(0);
+    setPoolAmount(STARTING_POOL);
     setBets([]);
-    setToastBet(null);
-    setMarketState("OPEN");
-    setResult(null);
-    setFeedState("LIVE");
-    setDemoOpen(false);
+    setPayouts([]);
+    setBetSlipOpen(false);
+    setToast(null);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      void videoRef.current.play();
+    }
   }
 
   if (!hasEntered) {
@@ -191,27 +242,24 @@ export default function Home() {
         <div className="entryGlow entryGlowTwo" />
         <header className="entryHeader">
           <Brand />
-          <span className="demoBadge">LIVE DEMO</span>
+          <span className="demoBadge">LIVE SIMULATION</span>
         </header>
 
         <section className="entryHero">
           <div className="livePill">
-            <i /> LIVE NOW
+            <i /> VAR MARKET OPEN
           </div>
           <p className="eyebrow">
             ARGENTINA <span>VS</span> EGYPT
           </p>
           <h1>
-            The net
+            The ball is in.
             <br />
-            moved.
-            <br />
-            The decision
-            <br />
-            hasn&apos;t.
+            The decision isn&apos;t.
           </h1>
           <p className="entryCopy">
-            Bet the next 60 seconds. Will VAR let the goal stand?
+            Follow the real review video, live prediction signal, and automatic
+            settlement.
           </p>
         </section>
 
@@ -222,191 +270,336 @@ export default function Home() {
               <strong>VARBET</strong>
               <span>now</span>
             </div>
-            <h2>⚽ VAR market open</h2>
-            <p>The ball is in the net. Will the goal stand?</p>
-            <small>Argentina vs Egypt · 58:02</small>
+            <h2>Goal under VAR review</h2>
+            <p>Egypt lead 0–2. Will the goal be overturned?</p>
+            <small>Argentina vs Egypt · 57:55</small>
           </div>
-          <button onClick={enterMarket} aria-label="Open betting market">
-            <Icon name="chevron" />
-          </button>
         </div>
 
         <button className="entryCta" onClick={enterMarket}>
-          Bet the decision{" "}
-          <span>
-            <Icon name="chevron" />
-          </span>
+          Watch and bet <span>›</span>
         </button>
-        <p className="entryLegal">18+ · Play responsibly · Demo experience</p>
+        <p className="entryLegal">18+ · Play responsibly · Prototype market</p>
       </main>
     );
   }
 
-  const winningBets = result ? bets.filter((bet) => bet.side === result) : [];
-  const settledPayout = winningBets.reduce(
-    (total, bet) => total + bet.payout,
-    0,
-  );
-
   return (
     <main className="appShell">
-      {toastBet && (
+      {toast && (
         <div className="toast" role="status">
-          <span className="toastCheck">
-            <Icon name="check" />
-          </span>
+          <span className="toastCheck">✓</span>
           <div>
-            <strong>Bet placed successfully</strong>
-            <p>
-              {money.format(toastBet.stake)} on{" "}
-              {toastBet.side === "GOAL" ? "Goal" : "No Goal"} at{" "}
-              {toastBet.odds.toFixed(2)}
-            </p>
+            <strong>{toast}</strong>
+            <p>Pool #{LIVE_POOL_ID}</p>
           </div>
-          <span className="toastPayout">{money.format(toastBet.payout)}</span>
         </div>
       )}
 
       <header className="appHeader">
         <Brand />
         <div className="headerActions">
-          <button
-            className="walletButton"
-            aria-label={`Wallet balance ${money.format(balance)}`}
-          >
-            <Icon name="wallet" />
-            <span>{money.format(balance)}</span>
-          </button>
-          <button
-            className="moreButton"
-            onClick={() => setDemoOpen(true)}
-            aria-label="Open demo controls"
-          >
-            •••
-          </button>
+          <span className={`connectionBadge ${socketState.toLowerCase()}`}>
+            <i /> {socketState}
+          </span>
+          <WalletMultiButton />
         </div>
       </header>
 
-      {feedState === "STALE" && (
-        <div className="staleBanner">
-          <Icon name="signal" /> Connection delayed. Betting is temporarily
-          paused.
-        </div>
-      )}
-
-      <section className="market" ref={marketRef}>
+      <section className="liveMarket">
         <div className="matchRow">
           <div>
-            <p>FIFA WORLD CUP · GROUP C</p>
+            <p>FIFA WORLD CUP · LIVE VAR REVIEW</p>
             <h2>
-              <span>ARG</span> 2 <b>–</b> 2 <span>EGY</span>
+              <span>ARG</span> {score} <span>EGY</span>
             </h2>
           </div>
-          <div className="matchClock">
-            <i /> 58:42
+          <div className={`matchClock ${acceptingBets ? "" : "settled"}`}>
+            <i /> {matchClock}
           </div>
         </div>
 
-        <div className="videoFrame">
-          <div className="stadiumLights" />
-          <div className="pitch">
-            <div className="centreCircle" />
-            <div className="penaltyBox" />
-            <div className="goalNet" />
-            <div className="referee">
-              <span />
-            </div>
-            <div className="player playerOne" />
-            <div className="player playerTwo" />
-          </div>
+        <div className="videoFrame realVideo">
+          <video
+            ref={videoRef}
+            src="/argentina-egypt-var.mp4"
+            playsInline
+            muted
+            controls
+            preload="metadata"
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onTimeUpdate={(event) =>
+              setElapsed(event.currentTarget.currentTime)
+            }
+            onEnded={() => setIsPlaying(false)}
+          />
           <div className="videoTopline">
             <span className="broadcastLive">
-              <i /> LIVE
+              <i /> {isPlaying ? "LIVE SIM" : "PAUSED"}
             </span>
-            <span>58:42</span>
+            <span>{matchClock}</span>
           </div>
-          <div className="reviewGraphic">
-            <span className="reviewIcon">VAR</span>
-            <div>
-              <strong>
-                {marketState === "OPEN"
-                  ? "Decision pending"
-                  : "Decision confirmed"}
-              </strong>
-              <small>
-                {marketState === "OPEN"
-                  ? "Referee at the monitor"
-                  : result === "GOAL"
-                    ? "Goal awarded"
-                    : "Goal overturned"}
-              </small>
-            </div>
+          <div className="scoreBug">
+            ARG <strong>{score}</strong> EGY
           </div>
-          <button className="volumeButton" aria-label="Toggle volume">
-            <Icon name="volume" />
-          </button>
         </div>
 
-        <div
-          className={`statusCard ${marketState === "SETTLED" ? "statusSettled" : ""}`}
-        >
+        <div className={`statusCard ${acceptingBets ? "" : "statusSettled"}`}>
           <div className="statusPulse">
-            <span>
-              {marketState === "OPEN" ? "VAR" : <Icon name="check" />}
-            </span>
+            <span>{acceptingBets ? "VAR" : "✓"}</span>
           </div>
           <div>
-            <p>
-              {marketState === "OPEN"
-                ? "VAR REVIEW · MARKET OPEN"
-                : "OFFICIAL DECISION · SETTLED"}
-            </p>
-            <h3>
-              {marketState === "OPEN"
-                ? "Will the goal stand?"
-                : result === "GOAL"
-                  ? "GOAL CONFIRMED"
-                  : "NO GOAL"}
-            </h3>
-            <small>
-              {marketState === "OPEN"
-                ? "Betting closes on the referee’s signal"
-                : result === "GOAL"
-                  ? "The goal has been awarded"
-                  : "The goal has been overturned"}
-            </small>
+            <p>{reviewPhase.eyebrow}</p>
+            <h3>{reviewPhase.title}</h3>
+            <small>{reviewPhase.detail}</small>
+          </div>
+          <div className="closeTimer">
+            <strong>{secondsRemaining}s</strong>
+            <small>{acceptingBets ? "to decision" : "closed"}</small>
           </div>
         </div>
 
-        {marketState === "OPEN" ? (
-          <section className="betPanel" aria-label="Place bet">
-            <div className="panelHeading">
+        <section className="signalCard" aria-label="Interpolated market signal">
+          <div className="signalHeader">
+            <div>
+              <span>POLYMARKET SIGNAL</span>
+              <small>Event-aligned linear interpolation</small>
+            </div>
+            <strong>{acceptingBets ? "UPDATING" : "FINAL"}</strong>
+          </div>
+          <div className="signalBar">
+            <span style={{ width: `${quote.argentina}%` }} />
+          </div>
+          <div className="signalValues">
+            <div>
+              <span>Argentina advances</span>
+              <strong>{percent(quote.argentina)}</strong>
+            </div>
+            <div>
+              <span>Egypt advances</span>
+              <strong>{percent(quote.egypt)}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className={`featuredPool ${acceptingBets ? "" : "resolved"}`}>
+          <div className="poolTopline">
+            <span>{acceptingBets ? "ACTIVE POOL" : "RESOLVED POOL"}</span>
+            <strong>{money.format(poolAmount)} USDC</strong>
+          </div>
+          <h3>Will Egypt&apos;s goal stand?</h3>
+          <p>
+            Pool #{LIVE_POOL_ID} · Launched at 57:55 ·{" "}
+            {acceptingBets ? "Accepting bets" : "Overturned and paid"}
+          </p>
+          <div className="quickOdds">
+            <button
+              data-testid="goal-bet"
+              disabled={!acceptingBets}
+              onClick={() => openBetSlip("GOAL")}
+            >
+              <span>GOAL · CONFIRMED</span>
+              <strong>{quote.goalOdds.toFixed(2)}</strong>
+              <small>{percent(quote.goalProbability * 100)} implied</small>
+            </button>
+            <button
+              data-testid="no-goal-bet"
+              disabled={!acceptingBets}
+              onClick={() => openBetSlip("NO_GOAL")}
+            >
+              <span>NO GOAL · OVERTURNED</span>
+              <strong>{quote.noGoalOdds.toFixed(2)}</strong>
+              <small>{percent(quote.noGoalProbability * 100)} implied</small>
+            </button>
+          </div>
+          {!acceptingBets && (
+            <button className="replayButton" onClick={replaySimulation}>
+              Replay timed simulation
+            </button>
+          )}
+        </section>
+      </section>
+
+      <section className="contentSection">
+        <div className="sectionHeading">
+          <div>
+            <span>MARKETS</span>
+            <h2>Current and historical pools</h2>
+          </div>
+          <span className="countBadge">{acceptingBets ? 2 : 3}</span>
+        </div>
+
+        <div className="poolList">
+          {acceptingBets && (
+            <button
+              className="poolListCard active"
+              onClick={() => openBetSlip("NO_GOAL")}
+            >
+              <span className="poolState">LIVE</span>
               <div>
-                <span>YOUR STAKE</span>
-                <small>Available {money.format(balance)}</small>
+                <strong>Argentina vs Egypt</strong>
+                <small>
+                  Goal review · {matchClock} · {money.format(poolAmount)}
+                </small>
               </div>
-              <div className="oddsLive">
-                <i /> Odds updating live
+              <span>Open ›</span>
+            </button>
+          )}
+          {!acceptingBets && (
+            <article className="poolListCard won">
+              <span className="poolState">PAID</span>
+              <div>
+                <strong>Argentina vs Egypt</strong>
+                <small>NO GOAL · Overturned · Pool #{LIVE_POOL_ID}</small>
               </div>
+              <span>✓</span>
+            </article>
+          )}
+          <article className="poolListCard">
+            <span className="poolState muted">PAID</span>
+            <div>
+              <strong>Brazil vs France</strong>
+              <small>GOAL · Confirmed · $8,420.00</small>
+            </div>
+            <span>✓</span>
+          </article>
+          <article className="poolListCard">
+            <span className="poolState muted">PAID</span>
+            <div>
+              <strong>Spain vs Japan</strong>
+              <small>NO GOAL · Overturned · $3,180.00</small>
+            </div>
+            <span>✓</span>
+          </article>
+        </div>
+      </section>
+
+      <section className="contentSection dashboard">
+        <div className="sectionHeading">
+          <div>
+            <span>MY DASHBOARD</span>
+            <h2>
+              {connected ? shortAddress(walletAddress) : "Connect your wallet"}
+            </h2>
+          </div>
+          <span className="walletStatus">
+            {connected ? "CONNECTED" : "PHANTOM"}
+          </span>
+        </div>
+
+        {!connected ? (
+          <div className="emptyState">
+            <strong>Your bets and payouts will appear here.</strong>
+            <p>Connect Phantom to place a bet and track settlement.</p>
+            <WalletMultiButton />
+          </div>
+        ) : (
+          <div className="dashboardGrid">
+            <div className="dashboardColumn">
+              <h3>My active bets</h3>
+              {bets.length === 0 ? (
+                <p className="emptyLine">No active bets yet.</p>
+              ) : (
+                bets.map((bet) => (
+                  <article key={bet.id} className="betRow">
+                    <div>
+                      <strong>
+                        {bet.side === "GOAL" ? "Confirmed" : "Overturned"}
+                      </strong>
+                      <small>
+                        Pool #{bet.poolId} · {bet.placedAt}
+                      </small>
+                    </div>
+                    <span>
+                      {money.format(bet.amount)} @ {bet.odds.toFixed(2)}
+                    </span>
+                  </article>
+                ))
+              )}
+            </div>
+            <div className="dashboardColumn">
+              <h3>My payouts</h3>
+              {payouts.length === 0 ? (
+                <p className="emptyLine">No payouts received.</p>
+              ) : (
+                payouts.map((payout) => (
+                  <article key={payout.id} className="payoutRow">
+                    <div>
+                      <strong>{money.format(payout.amount)}</strong>
+                      <small>Pool #{payout.poolId}</small>
+                    </div>
+                    <span>{payout.status}</span>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <footer>
+        <span>18+</span>
+        <a href="#">Play responsibly</a>
+        <a href="#">Terms</a>
+        <small>Prototype · USDC display values</small>
+      </footer>
+
+      {betSlipOpen && (
+        <div className="sheetBackdrop" onClick={() => setBetSlipOpen(false)}>
+          <section
+            className="betSheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bet-sheet-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sheetHandle" />
+            <div className="sheetHeader">
+              <div>
+                <span>POOL #{LIVE_POOL_ID}</span>
+                <h2 id="bet-sheet-title">Place your VAR bet</h2>
+              </div>
+              <button
+                onClick={() => setBetSlipOpen(false)}
+                aria-label="Close bet slip"
+              >
+                ×
+              </button>
             </div>
 
+            <div className="optionToggle">
+              <button
+                className={selectedSide === "GOAL" ? "selected goal" : ""}
+                onClick={() => setSelectedSide("GOAL")}
+              >
+                Confirmed <strong>{quote.goalOdds.toFixed(2)}</strong>
+              </button>
+              <button
+                className={selectedSide === "NO_GOAL" ? "selected noGoal" : ""}
+                onClick={() => setSelectedSide("NO_GOAL")}
+              >
+                Overturned <strong>{quote.noGoalOdds.toFixed(2)}</strong>
+              </button>
+            </div>
+
+            <label className="stakeLabel" htmlFor="stake-input">
+              Amount in USDC
+            </label>
             <div className="stakeField">
               <span>$</span>
               <input
+                id="stake-input"
                 value={stake}
                 onChange={(event) =>
                   setStake(event.target.value.replace(/[^0-9.]/g, ""))
                 }
                 inputMode="decimal"
-                aria-label="Bet stake"
               />
-              <button onClick={() => setStake(String(Math.floor(balance)))}>
-                MAX
-              </button>
+              <small>USDC</small>
             </div>
-
-            <div className="stakeChips" aria-label="Quick stake amounts">
-              {[5, 10, 25, 50].map((amount) => (
+            <div className="stakeChips">
+              {[1, 10, 100].map((amount) => (
                 <button
                   key={amount}
                   className={stakeNumber === amount ? "active" : ""}
@@ -417,159 +610,30 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="betButtons">
+            <div className="betSummary">
+              <span>Potential payout</span>
+              <strong>{money.format(potentialPayout)}</strong>
+            </div>
+
+            {connected ? (
               <button
-                className="betButton goalButton"
-                data-testid="goal-bet"
-                onClick={() => placeBet("GOAL")}
-                disabled={
-                  !validStake || feedState === "STALE" || Boolean(submitting)
-                }
+                className="placeBetButton"
+                disabled={!validStake || submitting || !acceptingBets}
+                onClick={placeBet}
               >
-                <span>
-                  <small>GOAL</small>
-                  <b>Confirmed</b>
-                </span>
-                <strong key={`goal-${oddsTick}`} className="oddsFlash">
-                  {submitting === "GOAL" ? "···" : goalOdds.toFixed(2)}
-                </strong>
-                <em>
-                  {validStake
-                    ? `${money.format(selectedPayouts.GOAL)} return`
-                    : "Enter stake"}
-                </em>
+                {submitting
+                  ? "Submitting…"
+                  : `Place bet at ${selectedOdds.toFixed(2)}`}
               </button>
-              <button
-                className="betButton noGoalButton"
-                data-testid="no-goal-bet"
-                onClick={() => placeBet("NO_GOAL")}
-                disabled={
-                  !validStake || feedState === "STALE" || Boolean(submitting)
-                }
-              >
-                <span>
-                  <small>NO GOAL</small>
-                  <b>Overturned</b>
-                </span>
-                <strong key={`no-goal-${oddsTick}`} className="oddsFlash">
-                  {submitting === "NO_GOAL" ? "···" : noGoalOdds.toFixed(2)}
-                </strong>
-                <em>
-                  {validStake
-                    ? `${money.format(selectedPayouts.NO_GOAL)} return`
-                    : "Enter stake"}
-                </em>
-              </button>
-            </div>
-
-            <p className="lockedNote">
-              <span>◆</span> Your displayed odds lock when the bet is accepted.
-            </p>
-          </section>
-        ) : (
-          <section className="settlementPanel">
-            <div className="settlementAmount">
-              <span>TOTAL PAYOUT</span>
-              <strong>{money.format(settledPayout)}</strong>
-              <small>
-                {winningBets.length} winning{" "}
-                {winningBets.length === 1 ? "bet" : "bets"}
-              </small>
-            </div>
-            <button onClick={resetDemo}>Return to match</button>
-          </section>
-        )}
-
-        {bets.length > 0 && (
-          <section className="openBets">
-            <div className="sectionTitle">
-              <h3>
-                {marketState === "OPEN" ? "Your live bets" : "Bet history"}
-              </h3>
-              <span>{bets.length}</span>
-            </div>
-            <div className="betList">
-              {bets.map((bet) => {
-                const won = marketState === "SETTLED" && bet.side === result;
-                const lost = marketState === "SETTLED" && bet.side !== result;
-                return (
-                  <article
-                    key={bet.id}
-                    className={won ? "won" : lost ? "lost" : ""}
-                  >
-                    <div>
-                      <span
-                        className={
-                          bet.side === "GOAL" ? "goalDot" : "noGoalDot"
-                        }
-                      />{" "}
-                      <strong>
-                        {bet.side === "GOAL" ? "Goal" : "No Goal"}
-                      </strong>
-                      <small>{bet.placedAt}</small>
-                    </div>
-                    <div>
-                      <span>
-                        {money.format(bet.stake)} at {bet.odds.toFixed(2)}
-                      </span>
-                      <strong>
-                        {lost ? "$0.00" : money.format(bet.payout)}
-                      </strong>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-      </section>
-
-      <footer>
-        <span>18+</span>
-        <a href="#">Play responsibly</a>
-        <a href="#">Terms</a>
-        <small>Demo market · No real money</small>
-      </footer>
-
-      {demoOpen && (
-        <div className="sheetBackdrop" onClick={() => setDemoOpen(false)}>
-          <section
-            className="demoSheet"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="sheetHandle" />
-            <span className="sheetEyebrow">PROTOTYPE CONTROLS</span>
-            <h2>Simulate the live market</h2>
-            <p>
-              Test settlement and feed protection states without waiting for a
-              real decision.
-            </p>
-            <button
-              className="sheetDecision goalDecision"
-              onClick={() => settle("GOAL")}
-            >
-              Award goal <span>GOAL</span>
-            </button>
-            <button
-              className="sheetDecision noGoalDecision"
-              onClick={() => settle("NO_GOAL")}
-            >
-              Overturn goal <span>NO GOAL</span>
-            </button>
-            <button
-              className="sheetSecondary"
-              onClick={() => {
-                setFeedState((current) =>
-                  current === "LIVE" ? "STALE" : "LIVE",
-                );
-                setDemoOpen(false);
-              }}
-            >
-              Toggle delayed feed
-            </button>
-            <button className="sheetSecondary" onClick={resetDemo}>
-              Reset experience
-            </button>
+            ) : (
+              <div className="connectPrompt">
+                <p>Connect Phantom before placing this bet.</p>
+                <WalletMultiButton />
+              </div>
+            )}
+            <small className="lockNote">
+              Odds lock when the backend accepts the order.
+            </small>
           </section>
         </div>
       )}

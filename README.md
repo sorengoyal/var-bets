@@ -2,14 +2,25 @@
 
 ## VARBET mobile prototype
 
-The interactive mobile-first VAR betting UI lives in [`apps/web`](apps/web). It includes a market-open notification, simulated live odds, repeat bet placement with locked odds, feed-delay protection, and demo settlement controls.
+The interactive mobile-first VAR betting UI lives in [`apps/web`](apps/web). It includes the real review video, a match-synchronized clock and score, interpolated prediction-market prices, Phantom Wallet Adapter support, pool discovery, a bet sheet, wallet-specific bets and payouts, and automatic settlement.
 
 ```sh
 pnpm install
 pnpm --filter web dev
 ```
 
-Open `http://localhost:3000` and use the `•••` menu to simulate a goal/no-goal decision or a delayed price feed. This is a no-real-money product prototype; production payment, identity, market-data, geofencing, and regulatory integrations are intentionally not connected.
+Open `http://localhost:3000`, enter the live market, and let the supplied match video drive the review through settlement. This is a no-real-money product prototype; production payment, identity, market-data, geofencing, and regulatory integrations are intentionally not connected.
+
+### Argentina vs Egypt simulation
+
+- `57:55`: the video and market open with Egypt leading `0–2` after the ball enters the net.
+- `58:45`: the referee reaches the monitor and the review status changes.
+- `59:45`: betting closes automatically, the decision resolves to `NO GOAL`, and the score returns to `0–1`.
+- Market percentages interpolate between `42.72/53.18`, `23.18/75.57`, and `33.19/66.54` for Argentina/Egypt, then move toward the next post-decision observation.
+
+Copy `apps/web/.env.example` to `apps/web/.env.local` to connect the frontend to the Nest API and a Solana RPC endpoint. Without `NEXT_PUBLIC_API_URL`, the timed experience runs in local simulation mode.
+
+The API exposes REST endpoints under `/api`, Swagger under `/docs`, and Socket.IO events named `poolUpdated` and `payoutExecuted`.
 
 ## VAR betting engine research
 

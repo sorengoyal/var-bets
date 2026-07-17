@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payout } from '../../db/entities/entities';
+import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class PayoutsService {
   constructor(
     @InjectRepository(Payout)
     private readonly payoutRepo: Repository<Payout>,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async findAll(wallet_address?: string) {
@@ -23,6 +25,8 @@ export class PayoutsService {
 
   async create(data: Partial<Payout>) {
     const payout = this.payoutRepo.create(data);
-    return this.payoutRepo.save(payout);
+    const savedPayout = await this.payoutRepo.save(payout);
+    this.eventsGateway.emitPayoutExecuted(savedPayout);
+    return savedPayout;
   }
 }
