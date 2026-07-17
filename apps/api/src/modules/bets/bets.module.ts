@@ -8,5 +8,6 @@ import { Bet } from '../../db/entities/entities';
   imports: [TypeOrmModule.forFeature([Bet])],
   controllers: [BetsController],
   providers: [BetsService],
+  exports: [BetsService, TypeOrmModule],
 })
 export class BetsModule {}

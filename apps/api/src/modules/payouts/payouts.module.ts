@@ -8,5 +8,6 @@ import { Payout } from '../../db/entities/entities';
   imports: [TypeOrmModule.forFeature([Payout])],
   controllers: [PayoutsController],
   providers: [PayoutsService],
+  exports: [PayoutsService, TypeOrmModule],
 })
 export class PayoutsModule {}

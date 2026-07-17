@@ -8,5 +8,6 @@ import { Fixture, FixtureMetadata } from '../../db/entities/entities';
   imports: [TypeOrmModule.forFeature([Fixture, FixtureMetadata])],
   controllers: [FixturesController],
   providers: [FixturesService],
+  exports: [FixturesService, TypeOrmModule],
 })
 export class FixturesModule {}

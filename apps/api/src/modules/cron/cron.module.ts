@@ -1,19 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronService } from './cron.service';
-import { FixturesService } from '../fixtures/fixtures.service';
-import { PoolsService } from '../pools/pools.service';
-import { BetsService } from '../bets/bets.service';
-import { PayoutsService } from '../payouts/payouts.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Score, Pool, Bet } from '../../db/entities/entities';
+import { FixturesModule } from '../fixtures/fixtures.module';
+import { PoolsModule } from '../pools/pools.module';
+import { BetsModule } from '../bets/bets.module';
+import { PayoutsModule } from '../payouts/payouts.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    FixturesModule,
+    PoolsModule,
+    BetsModule,
+    PayoutsModule,
     TypeOrmModule.forFeature([Score, Pool, Bet]),
   ],
-  controllers: [],
-  providers: [CronService, FixturesService, PoolsService, BetsService, PayoutsService],
+  providers: [CronService],
 })
 export class CronModule {}

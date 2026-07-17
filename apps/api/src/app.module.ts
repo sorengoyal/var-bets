@@ -20,7 +20,7 @@ import { Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook } from './d
       database: process.env.DB_NAME || 'varbets',
       autoLoadEntities: true,
       synchronize: true, 
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      entities: [__dirname + '/db/entities/**/*{.ts,.js}'],
       migrations: [__dirname + '/db/migrations/**/*{.ts,.js}'],
     }),
     TypeOrmModule.forFeature([Fixture, FixtureMetadata, Pool, Bet, Payout, Score, Webhook]),
