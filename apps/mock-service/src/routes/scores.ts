@@ -1,30 +1,26 @@
 import { Request, Response, Router } from "express";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { getDataDir } from "../config";
+import { getDataDir, START_TIME } from "../config";
 
 const router = Router();
 
-/**
- * Helper to get the current virtual time.
- * Logic: VirtualTime = START_TIME + (RealNow - ServerBootTime)
- */
-const getVirtualCurrentTime = (): Date => {
-  const startTime = new Date(process.env.START_TIME!).getTime();
+const getVirtualCurrentTime = (): number => {
   const bootTime = (global as any).SERVER_BOOT_TIME;
-  return new Date(startTime + (Date.now() - bootTime));
+  return START_TIME + (Date.now() - bootTime);
 };
 
 router.get("/updates/:fixtureId", async (req: Request, res: Response) => {
   const { fixtureId } = req.params;
   try {
     const virtualNow = getVirtualCurrentTime();
+    console.log("Current Time", virtualNow);
     const filePath = path.join(getDataDir(), `scores-${fixtureId}.json`);
     const data = await fs.readFile(filePath, "utf8");
     const events = JSON.parse(data);
 
     const filteredEvents = events.filter((event: any) => {
-      return new Date(event.timestamp) <= virtualNow;
+      return event.Ts <= virtualNow;
     });
 
     res.json(filteredEvents);
