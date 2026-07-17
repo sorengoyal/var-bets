@@ -25,6 +25,14 @@ Copy `apps/consumer-web/.env.example` to `apps/consumer-web/.env.local` to conne
 
 The API exposes REST endpoints under `/api`, Swagger under `/docs`, and Socket.IO events named `poolUpdated` and `payoutExecuted`.
 
+## Admin dashboard
+
+The operator-facing dashboard is a separate Next.js app in [`apps/admin-web`](apps/admin-web). It visualizes the Argentina–Egypt Polymarket path, pool settlement, risk controls, and scenario 10 Monte Carlo outputs.
+
+```sh
+pnpm --filter admin-web dev
+```
+
 ## VAR betting engine research
 
 The standalone Python order-execution engine and historical simulation are documented in [`research/var-betting-engine`](research/var-betting-engine/README.md).
