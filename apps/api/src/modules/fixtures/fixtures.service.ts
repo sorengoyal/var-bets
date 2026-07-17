@@ -39,19 +39,27 @@ export class FixturesService {
     return this.fixtureRepo.delete(id);
   }
 
-  async syncFromMockService() {
+  async syncFromTxLine() {
     try {
-      const response = await axios.get('http://localhost:4000/api/fixtures');
+      const txlineUrl = process.env.TXLINE_URL || 'http://localhost:4000';
+      const response = await axios.get(`${txlineUrl}/api/fixtures`, {
+        headers: {
+          Authorization: process.env.TXLINE_AUTH_TOKEN || '',
+          'X-Api-Token': process.env.TXLINE_API_TOKEN || '',
+        },
+      });
       const remoteFixtures = response.data;
 
       for (const rawRemote of remoteFixtures) {
-        const { Ts, GameState, ...remote}  = {
+        const { Ts, GameState, ...remote } = {
           ...rawRemote,
           Timestamp: Number(rawRemote.Ts),
-        }
+        };
         // Use FixtureId (External) as lookup
-        let fixture = await this.fixtureRepo.findOne({ where: { FixtureId: remote.FixtureId } });
-        
+        let fixture = await this.fixtureRepo.findOne({
+          where: { FixtureId: remote.FixtureId },
+        });
+
         if (!fixture) {
           fixture = await this.create({
             Timestamp: remote.Timestamp,
@@ -72,9 +80,14 @@ export class FixturesService {
         }
 
         // Ensure metadata exists and is active
-        let meta = await this.metadataRepo.findOne({ where: { fixture_id: fixture.id } });
+        const meta = await this.metadataRepo.findOne({
+          where: { fixture_id: fixture.id },
+        });
         if (!meta) {
-          await this.metadataRepo.save({ fixture_id: fixture.id, active: true });
+          await this.metadataRepo.save({
+            fixture_id: fixture.id,
+            active: true,
+          });
         }
       }
       return { synced: true, count: remoteFixtures.length };

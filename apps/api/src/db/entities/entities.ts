@@ -146,11 +146,14 @@ export class Score {
   @Column()
   fixtureId!: number;
 
+  @Column({ type: 'bigint' })
+  Ts!: number;
+
   @Column()
   Action!: string;
 
-  @Column({ type: 'jsonb' })
-  Data!: any;
+  @Column({ type: 'jsonb', nullable: true })
+  Data?: any;
 
   @CreateDateColumn()
   created_at!: Date;
