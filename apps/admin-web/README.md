@@ -56,4 +56,4 @@ The risk percentiles use scenario 10 from `research/var-betting-engine/simulatio
 
 The current engine configuration targets a `20%` theoretical gross margin. That requires a `25%` overround, so Goal and No-Goal implied quote probabilities sum to `125%` before inventory adjustments and hard risk caps. The target margin is not guaranteed realized profit; venue execution costs and the final book mix still determine event P&L.
 
-When a pool settles, the dashboard shows accepted user bets by side, filled Polymarket hedge orders by side, total gross payout, and realized profit. These totals come from the complete ledger and hedge aggregates, not the truncated recent-activity list.
+When a pool settles, the dashboard automatically opens a modal showing accepted user bets by side, filled Polymarket hedge orders by side, total gross payout, and realized profit. The modal can be reopened from the settled pool. These totals come from the complete ledger and hedge aggregates, not the truncated recent-activity list.

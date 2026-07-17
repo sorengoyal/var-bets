@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { PricePoint } from "@var-bets/dashboard-contract";
+import { useEffect, useRef, useState } from "react";
+import type {
+  DashboardSnapshot,
+  PricePoint,
+} from "@var-bets/dashboard-contract";
 import { useDashboardData } from "../lib/dashboard-adapter";
 
 type Series = "ARG" | "EGY" | "ALL";
@@ -156,9 +159,91 @@ function OddsChart({
   );
 }
 
+function SettlementSummary({ snapshot }: { snapshot: DashboardSnapshot }) {
+  return (
+    <>
+      <div className="settlementTitle">
+        <div>
+          <span>FINAL SETTLEMENT</span>
+          <h4>Simulation totals</h4>
+        </div>
+        <b>NO GOAL</b>
+      </div>
+      <div className="settlementGrid">
+        <article>
+          <span>USER BETS · GOAL</span>
+          <strong>
+            {snapshot.settlement.userGoalBets.count.toLocaleString()} bets
+          </strong>
+          <small>
+            {money.format(snapshot.settlement.userGoalBets.amount)} accepted
+          </small>
+        </article>
+        <article>
+          <span>USER BETS · NO GOAL</span>
+          <strong>
+            {snapshot.settlement.userNoGoalBets.count.toLocaleString()} bets
+          </strong>
+          <small>
+            {money.format(snapshot.settlement.userNoGoalBets.amount)} accepted
+          </small>
+        </article>
+        <article>
+          <span>POLYMARKET HEDGES · GOAL</span>
+          <strong>
+            {snapshot.settlement.polymarketGoalHedges.count.toLocaleString()}{" "}
+            orders
+          </strong>
+          <small>
+            {money.format(snapshot.settlement.polymarketGoalHedges.amount)}{" "}
+            notional
+          </small>
+        </article>
+        <article>
+          <span>POLYMARKET HEDGES · NO GOAL</span>
+          <strong>
+            {snapshot.settlement.polymarketNoGoalHedges.count.toLocaleString()}{" "}
+            orders
+          </strong>
+          <small>
+            {money.format(snapshot.settlement.polymarketNoGoalHedges.amount)}{" "}
+            notional
+          </small>
+        </article>
+        <article className="settlementMoney">
+          <span>TOTAL PAYOUT</span>
+          <strong>{money.format(snapshot.settlement.totalPayout)}</strong>
+          <small>Gross winning-user payout</small>
+        </article>
+        <article className="settlementMoney">
+          <span>TOTAL PROFIT</span>
+          <strong
+            className={
+              snapshot.settlement.totalProfit >= 0 ? "wonText" : "lostText"
+            }
+          >
+            {signedMoney(snapshot.settlement.totalProfit)}
+          </strong>
+          <small>After hedge payoff and execution cost</small>
+        </article>
+      </div>
+      {snapshot.settlement.totalProfit < 0 && (
+        <p className="riskNotice">
+          This loss is permitted by the current{" "}
+          {money.format(snapshot.model.maximumUnhedgedLoss)} maximum-loss limit.
+          A 20% pricing margin improves expected return but does not guarantee
+          profit on every outcome.
+        </p>
+      )}
+    </>
+  );
+}
+
 export default function AdminDashboard() {
   const [series, setSeries] = useState<Series>("ALL");
   const [poolExpanded, setPoolExpanded] = useState(true);
+  const [settlementModalOpen, setSettlementModalOpen] = useState(false);
+  const settlementWasShown = useRef(false);
   const { connected, resetSimulation, snapshot } = useDashboardData();
   const { fixture, market, model, pool } = snapshot;
   const requestedBets = pool.acceptedBets + pool.rejectedBets;
@@ -170,6 +255,20 @@ export default function AdminDashboard() {
   const eventProfit =
     pool.status === "SETTLED" ? pool.profitIfNoGoal : pool.worstCaseProfit;
   const outcomeText = pool.outcome ?? "PENDING";
+
+  useEffect(() => {
+    if (pool.status === "OPEN") settlementWasShown.current = false;
+    if (connected && pool.status === "SETTLED" && !settlementWasShown.current) {
+      settlementWasShown.current = true;
+      setSettlementModalOpen(true);
+    }
+  }, [connected, pool.status]);
+
+  const restartReplay = async () => {
+    setSettlementModalOpen(false);
+    settlementWasShown.current = false;
+    await resetSimulation();
+  };
 
   return (
     <main>
@@ -183,7 +282,7 @@ export default function AdminDashboard() {
           {snapshot.mode === "SIMULATION" && (
             <button
               className="resetButton"
-              onClick={() => void resetSimulation()}
+              onClick={() => void restartReplay()}
             >
               Restart replay
             </button>
@@ -478,89 +577,12 @@ export default function AdminDashboard() {
                 </section>
 
                 {pool.status === "SETTLED" && (
-                  <section className="settlementSummary">
-                    <div className="settlementTitle">
-                      <div>
-                        <span>FINAL SETTLEMENT</span>
-                        <h4>Simulation totals</h4>
-                      </div>
-                      <b>NO GOAL</b>
-                    </div>
-                    <div className="settlementGrid">
-                      <article>
-                        <span>USER BETS · GOAL</span>
-                        <strong>
-                          {snapshot.settlement.userGoalBets.count.toLocaleString()}{" "}
-                          bets
-                        </strong>
-                        <small>
-                          {money.format(
-                            snapshot.settlement.userGoalBets.amount,
-                          )}{" "}
-                          accepted
-                        </small>
-                      </article>
-                      <article>
-                        <span>USER BETS · NO GOAL</span>
-                        <strong>
-                          {snapshot.settlement.userNoGoalBets.count.toLocaleString()}{" "}
-                          bets
-                        </strong>
-                        <small>
-                          {money.format(
-                            snapshot.settlement.userNoGoalBets.amount,
-                          )}{" "}
-                          accepted
-                        </small>
-                      </article>
-                      <article>
-                        <span>POLYMARKET HEDGES · GOAL</span>
-                        <strong>
-                          {snapshot.settlement.polymarketGoalHedges.count.toLocaleString()}{" "}
-                          orders
-                        </strong>
-                        <small>
-                          {money.format(
-                            snapshot.settlement.polymarketGoalHedges.amount,
-                          )}{" "}
-                          notional
-                        </small>
-                      </article>
-                      <article>
-                        <span>POLYMARKET HEDGES · NO GOAL</span>
-                        <strong>
-                          {snapshot.settlement.polymarketNoGoalHedges.count.toLocaleString()}{" "}
-                          orders
-                        </strong>
-                        <small>
-                          {money.format(
-                            snapshot.settlement.polymarketNoGoalHedges.amount,
-                          )}{" "}
-                          notional
-                        </small>
-                      </article>
-                      <article className="settlementMoney">
-                        <span>TOTAL PAYOUT</span>
-                        <strong>
-                          {money.format(snapshot.settlement.totalPayout)}
-                        </strong>
-                        <small>Gross winning-user payout</small>
-                      </article>
-                      <article className="settlementMoney">
-                        <span>TOTAL PROFIT</span>
-                        <strong
-                          className={
-                            snapshot.settlement.totalProfit >= 0
-                              ? "wonText"
-                              : "lostText"
-                          }
-                        >
-                          {signedMoney(snapshot.settlement.totalProfit)}
-                        </strong>
-                        <small>After hedge payoff and execution cost</small>
-                      </article>
-                    </div>
-                  </section>
+                  <button
+                    className="viewSettlementButton"
+                    onClick={() => setSettlementModalOpen(true)}
+                  >
+                    View final settlement
+                  </button>
                 )}
               </div>
             )}
@@ -632,6 +654,28 @@ export default function AdminDashboard() {
           </section>
         </div>
       </div>
+
+      {settlementModalOpen && pool.status === "SETTLED" && (
+        <div className="modalBackdrop" role="presentation">
+          <section
+            className="settlementModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settlement-modal-title"
+          >
+            <button
+              className="modalClose"
+              aria-label="Close settlement summary"
+              onClick={() => setSettlementModalOpen(false)}
+            >
+              ×
+            </button>
+            <h2 id="settlement-modal-title">VAR market settled</h2>
+            <p>Argentina 0–1 Egypt · Review outcome: NO GOAL</p>
+            <SettlementSummary snapshot={snapshot} />
+          </section>
+        </div>
+      )}
     </main>
   );
 }
