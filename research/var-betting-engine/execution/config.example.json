@@ -1,0 +1,11 @@
+{
+  "base_overround": 0.07,
+  "inventory_sensitivity": 0.08,
+  "minimum_decimal_odds": 1.05,
+  "maximum_decimal_odds": 20.0,
+  "minimum_stake": 1.0,
+  "maximum_stake": 500.0,
+  "maximum_unhedged_loss": 1000.0,
+  "quote_ttl_ms": 500,
+  "require_hedge_fill": true
+}
