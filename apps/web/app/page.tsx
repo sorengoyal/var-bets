@@ -30,6 +30,7 @@ type SettlementSummary = {
   totalStaked: number;
   payout: number;
   net: number;
+  endingBalance: number;
 };
 
 const LIVE_POOL_ID = 20260707;
@@ -176,7 +177,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!settled || settlementHandled.current) return;
+    if (!settled) {
+      settlementHandled.current = false;
+      setSettlementSummary(null);
+      return;
+    }
+    if (settlementHandled.current) return;
     settlementHandled.current = true;
 
     const winnings = bets
@@ -189,6 +195,7 @@ export default function Home() {
         totalStaked,
         payout: winnings,
         net: winnings - totalStaked,
+        endingBalance: usdcBalance + winnings,
       });
     }
 
@@ -207,7 +214,7 @@ export default function Home() {
     } else {
       setToast("Market closed automatically: NO GOAL");
     }
-  }, [bets, settled]);
+  }, [bets, settled, usdcBalance]);
 
   async function placeBet(side: Side) {
     if (!walletConnected || !walletAddress || !validStake || !acceptingBets)
@@ -596,6 +603,12 @@ export default function Home() {
               <span>{settlementSummary.net >= 0 ? "You won" : "You lost"}</span>
               <strong>{money.format(Math.abs(settlementSummary.net))}</strong>
             </div>
+            <p className="settlementBalance">
+              Wallet balance after settlement
+              <strong>
+                {money.format(settlementSummary.endingBalance)} USDC
+              </strong>
+            </p>
 
             <button onClick={() => setSettlementSummary(null)}>Done</button>
           </section>
