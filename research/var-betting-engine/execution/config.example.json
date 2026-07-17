@@ -1,6 +1,7 @@
 {
   "base_overround": 0.25,
   "inventory_sensitivity": 0.08,
+  "minimum_book_margin": 0.2,
   "minimum_decimal_odds": 1.05,
   "maximum_decimal_odds": 20.0,
   "minimum_stake": 1.0,

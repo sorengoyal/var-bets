@@ -37,6 +37,7 @@ const MODEL = {
   lossProbability: 0.0028,
   p99Liability: 1000,
   baseOverround: 0.25,
+  minimumBookMargin: 0.2,
   maximumUnhedgedLoss: 1000,
   minimumDecimalOdds: 1.05,
 };
@@ -120,10 +121,13 @@ export class SimulationRuntime {
     });
     this.payments = new InMemoryPayments();
     this.hedging = new SimulatedPolymarketHedge();
+    this.hedging.argPrice = point.argProbability / 100;
+    this.hedging.egyPrice = point.egyProbability / 100;
     this.engine = new BetExecutionEngine({
       config: {
         baseOverround: MODEL.baseOverround,
         inventorySensitivity: 0.08,
+        minimumBookMargin: MODEL.minimumBookMargin,
         minimumDecimalOdds: MODEL.minimumDecimalOdds,
         maximumDecimalOdds: 20,
         minimumStakeCents: 100,
@@ -155,6 +159,8 @@ export class SimulationRuntime {
       observedAt: now,
     });
     this.hedging.elapsedSecond = this.elapsedSecond;
+    this.hedging.argPrice = point.argProbability / 100;
+    this.hedging.egyPrice = point.egyProbability / 100;
 
     const betCount = this.random.integer(3, 11);
     for (let index = 0; index < betCount; index += 1) {

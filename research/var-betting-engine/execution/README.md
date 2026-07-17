@@ -70,15 +70,22 @@ sequenceDiagram
 | ----------------------- | --------------------------------------------------- | --------------: |
 | `base_overround`        | Base house overround added to implied probabilities |          `0.25` |
 | `inventory_sensitivity` | How strongly odds respond to payout imbalance       |          `0.08` |
+| `minimum_book_margin`   | Profit floor that rises with accepted handle        |          `0.20` |
 | `minimum_decimal_odds`  | Reject instead of offering odds below this value    |          `1.05` |
 | `maximum_decimal_odds`  | Maximum payout multiple displayed                   |          `20.0` |
 | `minimum_stake`         | Smallest accepted stake                             |            `$1` |
 | `maximum_stake`         | Largest stake before dynamic risk checks            |          `$500` |
-| `maximum_unhedged_loss` | Hard book loss limit before hedge payoff            |        `$1,000` |
+| `maximum_unhedged_loss` | Startup risk buffer deducted from the profit floor  |        `$1,000` |
 | `quote_ttl_ms`          | Time during which displayed odds remain executable  |        `500 ms` |
 | `require_hedge_fill`    | Reject and refund when the hedge does not fill      |          `true` |
 
-`maximum_unhedged_loss` is a loss cap, not a guaranteed profit. Set it to zero only when the hedge model and execution guarantees support that constraint. Early one-sided bets cannot offer decimal odds above `1.00` while simultaneously guaranteeing profit without outside liquidity or a hedge.
+The minimum required book profit rises as liquidity accumulates:
+
+```text
+minimum_book_profit = accepted_handle × minimum_book_margin − startup_risk_buffer
+```
+
+The startup buffer permits early one-sided liquidity. With a `20%` minimum book margin and a `$1,000` buffer, the required worst-case profit becomes positive once accepted handle exceeds `$5,000`.
 
 ### Quote request inputs
 
@@ -200,7 +207,7 @@ maximum_safe_payout =
     projected_handle
     + hedge_payoff_for_selected_result
     - reserved_execution_cost
-    + maximum_unhedged_loss
+    - minimum_book_profit
 
 maximum_safe_odds =
     (maximum_safe_payout - existing_selected_result_payout) / stake
@@ -209,6 +216,8 @@ offered_odds = min(market_odds, maximum_safe_odds, maximum_decimal_odds)
 ```
 
 If `offered_odds < minimum_decimal_odds`, the engine rejects the quote.
+
+This means the quote shortens as selected-side liability grows. Bets that cannot preserve the handle-dependent profit floor at or above the minimum decimal odds are rejected.
 
 Implementation: `BetExecutionEngine.riskCappedOdds()`.
 

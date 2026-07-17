@@ -84,6 +84,7 @@ const initialSnapshot: DashboardSnapshot = {
     lossProbability: 0.0028,
     p99Liability: 1000,
     baseOverround: 0.25,
+    minimumBookMargin: 0.2,
     maximumUnhedgedLoss: 1000,
     minimumDecimalOdds: 1.05,
   },

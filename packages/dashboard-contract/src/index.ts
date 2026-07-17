@@ -84,6 +84,7 @@ export interface DashboardSnapshot {
     lossProbability: number;
     p99Liability: number;
     baseOverround: number;
+    minimumBookMargin: number;
     maximumUnhedgedLoss: number;
     minimumDecimalOdds: number;
   };

@@ -160,6 +160,10 @@ function OddsChart({
 }
 
 function SettlementSummary({ snapshot }: { snapshot: DashboardSnapshot }) {
+  const requiredBookProfit =
+    snapshot.pool.acceptedHandle * snapshot.model.minimumBookMargin -
+    snapshot.model.maximumUnhedgedLoss;
+
   return (
     <>
       <div className="settlementTitle">
@@ -227,14 +231,17 @@ function SettlementSummary({ snapshot }: { snapshot: DashboardSnapshot }) {
           <small>After hedge payoff and execution cost</small>
         </article>
       </div>
-      {snapshot.settlement.totalProfit < 0 && (
-        <p className="riskNotice">
-          This loss is permitted by the current{" "}
-          {money.format(snapshot.model.maximumUnhedgedLoss)} maximum-loss limit.
-          A 20% pricing margin improves expected return but does not guarantee
-          profit on every outcome.
-        </p>
-      )}
+      <p
+        className={
+          snapshot.settlement.totalProfit >= requiredBookProfit
+            ? "profitNotice"
+            : "riskNotice"
+        }
+      >
+        Required book profit: {money.format(requiredBookProfit)}. Realized
+        profit: {money.format(snapshot.settlement.totalProfit)}. The floor is
+        20% of accepted handle less the $1,000 startup risk buffer.
+      </p>
     </>
   );
 }
@@ -331,7 +338,7 @@ export default function AdminDashboard() {
             value={money.format(
               Math.max(pool.payoutIfGoal, pool.payoutIfNoGoal),
             )}
-            note={`Model P99 cap ${money.format(model.p99Liability)}`}
+            note={`Startup risk buffer ${money.format(model.maximumUnhedgedLoss)}`}
             tone="warning"
           />
           <Metric
@@ -623,10 +630,17 @@ export default function AdminDashboard() {
             </div>
             <article>
               <div>
-                <strong>Liability limiter</strong>
-                <small>Maximum unhedged loss</small>
+                <strong>Startup risk buffer</strong>
+                <small>Temporary allowance before the profit floor rises</small>
               </div>
               <span>{money.format(model.maximumUnhedgedLoss)}</span>
+            </article>
+            <article>
+              <div>
+                <strong>Minimum book margin</strong>
+                <small>Required profit as liquidity accumulates</small>
+              </div>
+              <span>{(model.minimumBookMargin * 100).toFixed(0)}%</span>
             </article>
             <article>
               <div>

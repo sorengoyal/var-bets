@@ -41,6 +41,7 @@ function clamp(value: number, minimum: number, maximum: number): number {
 export interface EngineConfigJson {
   base_overround: number;
   inventory_sensitivity: number;
+  minimum_book_margin: number;
   minimum_decimal_odds: number;
   maximum_decimal_odds: number;
   minimum_stake: number;
@@ -53,6 +54,7 @@ export interface EngineConfigJson {
 export interface EngineConfig {
   baseOverround: number;
   inventorySensitivity: number;
+  minimumBookMargin: number;
   minimumDecimalOdds: number;
   maximumDecimalOdds: number;
   minimumStakeCents: Cents;
@@ -66,6 +68,7 @@ export function engineConfigFromJson(values: EngineConfigJson): EngineConfig {
   return {
     baseOverround: values.base_overround,
     inventorySensitivity: values.inventory_sensitivity,
+    minimumBookMargin: values.minimum_book_margin,
     minimumDecimalOdds: values.minimum_decimal_odds,
     maximumDecimalOdds: values.maximum_decimal_odds,
     minimumStakeCents: centsFromDollars(values.minimum_stake),
@@ -358,8 +361,7 @@ export class BetExecutionEngine {
         const book = await this.ledger.getBook(order.marketId);
         const projected = this.applyOrderToBook(book, order);
         if (
-          worstCaseProfitCents(projected) <
-          -this.config.maximumUnhedgedLossCents
+          worstCaseProfitCents(projected) < this.minimumBookProfit(projected)
         ) {
           throw new ExecutionError("RISK_CHANGED_REQUOTE_REQUIRED");
         }
@@ -565,8 +567,11 @@ export class BetExecutionEngine {
     const maximumSafePayoutCents =
       projectedHandleCents +
       hedgePayoffCents -
-      book.reservedExecutionCostCents +
-      this.config.maximumUnhedgedLossCents;
+      book.reservedExecutionCostCents -
+      this.minimumBookProfit({
+        ...book,
+        acceptedHandleCents: projectedHandleCents,
+      });
     const maximumSafeOdds = roundOdds(
       (maximumSafePayoutCents - existingPayoutCents) / stakeCents,
     );
@@ -577,6 +582,13 @@ export class BetExecutionEngine {
     );
     if (offeredOdds < this.config.minimumDecimalOdds) return null;
     return roundOdds(offeredOdds);
+  }
+
+  private minimumBookProfit(book: BookState): Cents {
+    return (
+      Math.round(book.acceptedHandleCents * this.config.minimumBookMargin) -
+      this.config.maximumUnhedgedLossCents
+    );
   }
 
   private buildQuote(options: {
