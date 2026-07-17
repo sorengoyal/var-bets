@@ -14,6 +14,11 @@ async function bootstrap() {
     .setTitle('VAR Bets API')
     .setDescription('Prediction markets for football VAR reviews')
     .setVersion('1.0')
+    .addApiKey(
+      { type: 'apiKey', name: 'x-api-token', in: 'header' },
+      'x-api-token',
+    )
+    .addSecurityRequirements('x-api-token')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

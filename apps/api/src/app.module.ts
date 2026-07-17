@@ -1,13 +1,19 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthMiddleware } from './middleware/auth.middleware';
 import { FixturesModule } from './modules/fixtures/fixtures.module';
+import { FixturesController } from './modules/fixtures/fixtures.controller';
 import { PoolsModule } from './modules/pools/pools.module';
+import { PoolsController } from './modules/pools/pools.controller';
 import { BetsModule } from './modules/bets/bets.module';
+import { BetsController } from './modules/bets/bets.controller';
 import { PayoutsModule } from './modules/payouts/payouts.module';
+import { PayoutsController } from './modules/payouts/payouts.controller';
 import { CronModule } from './modules/cron/cron.module';
 import { SimulateModule } from './modules/simulate/simulate.module';
+import { SimulateController } from './modules/simulate/simulate.controller';
 import { SocketModule } from './modules/socket/socket.module';
 import {
   Fixture,
@@ -53,4 +59,17 @@ import {
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthMiddleware)
+      .forRoutes(
+        AppController,
+        FixturesController,
+        PoolsController,
+        BetsController,
+        PayoutsController,
+        SimulateController,
+      );
+  }
+}

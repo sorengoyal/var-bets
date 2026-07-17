@@ -24,7 +24,7 @@ export class SimulateService {
     this.logger.log(`Mock clock reset to ${data.currentTime}`);
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.query('TRUNCATE bets, payouts, pools, scores CASCADE'); 
+      await manager.query('TRUNCATE bets, payouts, pools, scores CASCADE');
     });
     this.logger.log(
       'DB truncated: bets, payouts, pools, scores. Fixtures deactivated.',
