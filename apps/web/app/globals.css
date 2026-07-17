@@ -85,23 +85,24 @@ a:focus-visible {
 }
 
 .landingContent > .brand {
+  justify-self: center;
   margin-bottom: 42px;
-  font-size: 32px;
+  font-size: 39px;
 }
 
 .landingContent > .brand .brandMark {
-  width: 44px;
-  height: 44px;
-  margin-right: 10px;
-  font-size: 29px;
+  width: 54px;
+  height: 54px;
+  margin-right: 12px;
+  font-size: 36px;
 }
 
 .landingContent h1 {
   max-width: 430px;
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(32px, 8.6vw, 44px);
-  line-height: 1;
+  font-size: clamp(27px, 7.2vw, 37px);
+  line-height: 1.04;
   letter-spacing: -0.025em;
   text-transform: uppercase;
   margin-bottom: 25px;
