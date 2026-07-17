@@ -11,11 +11,11 @@ export class Fixture {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'timestamp' })
-  Timestamp!: Date;
+  @Column({ type: 'bigint' })
+  Timestamp!: number;
 
-  @Column({ type: 'timestamp' })
-  StartTime!: Date;
+  @Column({ type: 'bigint' })
+  StartTime!: number;
 
   @Column()
   Competition!: string;

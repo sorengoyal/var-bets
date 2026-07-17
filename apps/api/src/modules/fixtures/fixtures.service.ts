@@ -21,6 +21,10 @@ export class FixturesService {
     return this.fixtureRepo.findOne({ where: { id } });
   }
 
+  async findByFixtureId(fixtureId: string) {
+    return this.fixtureRepo.findOne({ where: { FixtureId: fixtureId } });
+  }
+
   async create(data: Partial<Fixture>) {
     const fixture = this.fixtureRepo.create(data);
     return this.fixtureRepo.save(fixture);
@@ -40,7 +44,11 @@ export class FixturesService {
       const response = await axios.get('http://localhost:4000/api/fixtures');
       const remoteFixtures = response.data;
 
-      for (const remote of remoteFixtures) {
+      for (const rawRemote of remoteFixtures) {
+        const { Ts, GameState, ...remote}  = {
+          ...rawRemote,
+          Timestamp: Number(rawRemote.Ts),
+        }
         // Use FixtureId (External) as lookup
         let fixture = await this.fixtureRepo.findOne({ where: { FixtureId: remote.FixtureId } });
         
