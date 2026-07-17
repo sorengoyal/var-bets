@@ -12,6 +12,7 @@ import { BetsController } from './modules/bets/bets.controller';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { PayoutsController } from './modules/payouts/payouts.controller';
 import { CronModule } from './modules/cron/cron.module';
+import { EventsModule } from './modules/events/events.module';
 import { SimulateModule } from './modules/simulate/simulate.module';
 import { SimulateController } from './modules/simulate/simulate.controller';
 import { SocketModule } from './modules/socket/socket.module';
@@ -53,6 +54,7 @@ import {
     BetsModule,
     PayoutsModule,
     CronModule,
+    EventsModule,
     SimulateModule,
     SocketModule,
   ],

@@ -5,9 +5,12 @@ packages:
   - "research/var-betting-engine/execution"
 
 allowBuilds:
-  '@scarf/scarf': false
+  "@scarf/scarf": false
+  bufferutil: false
   esbuild: true
+  sharp: false
   unrs-resolver: false
+  utf-8-validate: false
 
 # Allow these dependencies to run build scripts
 onlyBuiltDependencies:
