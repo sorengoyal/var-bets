@@ -77,7 +77,10 @@ export class CronService {
           Data: event.Data,
         });
 
-        if (event.Action === 'var') {
+        if (event.Action === 'goal') {
+          await this.handleGoalEvent(fixture.id, event.Data, event.Participant);
+        }
+        else if (event.Action === 'var') {
           await this.handleVarStart(fixture.id, event.Data);
         } else if (event.Action === 'var_end') {
           await this.handleVarEnd(fixture.id, event.Data);
@@ -91,17 +94,31 @@ export class CronService {
     }
   }
 
+  private async handleGoalEvent(
+    fixtureId: number,
+    _eventData: Record<string, unknown>,
+    _participant: number,
+  ) {
+    this.logger.log(`Goal detected for fixture ${fixtureId}. Creating pool...`);
+    await this.poolsService.create({
+      fixture_id: fixtureId,
+      acceptingBets: true,
+      confirmed: false,
+      amount: 0,
+      paidOut: false,
+    });
+  }
+
   private async handleVarStart(
     fixtureId: number,
     _eventData: Record<string, unknown>,
   ) {
-    this.logger.log(`VAR Started for fixture ${fixtureId}. Creating pool...`);
-    await this.poolsService.create({
-      fixture_id: fixtureId,
-      acceptingBets: true,
-      amount: 0,
-      paidOut: false,
+    this.logger.log(`VAR Started for fixture ${fixtureId}. Confirming pool...`);
+     const pool = await this.poolRepo.findOne({
+      where: { fixture_id: fixtureId, acceptingBets: true, confirmed: false },
     });
+     if (!pool) return;
+    await this.poolsService.update(pool.id, { confirmed: true });
   }
 
   private async handleVarEnd(
