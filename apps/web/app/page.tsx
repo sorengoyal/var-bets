@@ -54,18 +54,31 @@ function shortAddress(address: string) {
   return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
+function WalletConnectButton({ mounted }: { mounted: boolean }) {
+  if (!mounted) {
+    return (
+      <button className="walletPlaceholder" disabled>
+        Connect Phantom
+      </button>
+    );
+  }
+
+  return <WalletMultiButton />;
+}
+
 export default function Home() {
   const { connected, publicKey } = useWallet();
   const videoRef = useRef<HTMLVideoElement>(null);
   const settlementHandled = useRef(false);
   const [hasEntered, setHasEntered] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [poolAmount, setPoolAmount] = useState(STARTING_POOL);
   const [bets, setBets] = useState<BetRecord[]>([]);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
-  const [betSlipOpen, setBetSlipOpen] = useState(false);
-  const [selectedSide, setSelectedSide] = useState<Side>("NO_GOAL");
+  const [demoWalletConnected, setDemoWalletConnected] = useState(false);
+  const [usdcBalance, setUsdcBalance] = useState(0);
   const [stake, setStake] = useState("10");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -73,7 +86,9 @@ export default function Home() {
     API_URL ? "LIVE" : "SIMULATED",
   );
 
-  const walletAddress = publicKey?.toBase58() ?? "";
+  const walletConnected = connected || demoWalletConnected;
+  const walletAddress =
+    publicKey?.toBase58() ?? (demoWalletConnected ? "Demo7xUSDC9Wallet" : "");
   const quote = useMemo(() => quoteAt(elapsed), [elapsed]);
   const reviewPhase = useMemo(() => reviewPhaseAt(elapsed), [elapsed]);
   const goalOccurred = elapsed >= SIMULATION.goalAt;
@@ -88,15 +103,27 @@ export default function Home() {
     ),
   );
   const stakeNumber = Number(stake);
-  const selectedOdds =
-    selectedSide === "GOAL" ? quote.goalOdds : quote.noGoalOdds;
-  const validStake = Number.isFinite(stakeNumber) && stakeNumber > 0;
-  const potentialPayout = validStake ? stakeNumber * selectedOdds : 0;
+  const validStake =
+    Number.isFinite(stakeNumber) &&
+    stakeNumber > 0 &&
+    stakeNumber <= usdcBalance;
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!hasEntered) return;
     void videoRef.current?.play().catch(() => setIsPlaying(false));
   }, [hasEntered]);
+
+  useEffect(() => {
+    setUsdcBalance(walletConnected ? 1000 : 0);
+  }, [walletConnected]);
+
+  useEffect(() => {
+    if (walletConnected || !hasEntered) return;
+    videoRef.current?.pause();
+    setHasEntered(false);
+  }, [hasEntered, walletConnected]);
 
   useEffect(() => {
     if (!toast) return;
@@ -157,6 +184,7 @@ export default function Home() {
       .reduce((total, bet) => total + bet.payout, 0);
 
     if (winnings > 0) {
+      setUsdcBalance((current) => current + winnings);
       setPayouts((current) => [
         {
           id: Date.now(),
@@ -170,23 +198,18 @@ export default function Home() {
     } else {
       setToast("Market closed automatically: NO GOAL");
     }
-    setBetSlipOpen(false);
   }, [bets, settled]);
 
   function enterMarket() {
+    if (!walletConnected) return;
     setHasEntered(true);
   }
 
-  function openBetSlip(side: Side) {
-    if (!acceptingBets) return;
-    setSelectedSide(side);
-    setBetSlipOpen(true);
-  }
-
-  async function placeBet() {
-    if (!connected || !walletAddress || !validStake || !acceptingBets) return;
+  async function placeBet(side: Side) {
+    if (!walletConnected || !walletAddress || !validStake || !acceptingBets)
+      return;
     setSubmitting(true);
-    const lockedOdds = selectedOdds;
+    const lockedOdds = side === "GOAL" ? quote.goalOdds : quote.noGoalOdds;
 
     try {
       if (API_URL) {
@@ -197,7 +220,7 @@ export default function Home() {
             poolId: LIVE_POOL_ID,
             wallet_address: walletAddress,
             amount: stakeNumber,
-            option: selectedSide,
+            option: side,
           }),
         });
         if (!response.ok) throw new Error("Bet request failed");
@@ -206,7 +229,7 @@ export default function Home() {
       const bet: BetRecord = {
         id: Date.now(),
         poolId: LIVE_POOL_ID,
-        side: selectedSide,
+        side,
         amount: stakeNumber,
         odds: lockedOdds,
         payout: stakeNumber * lockedOdds,
@@ -214,10 +237,10 @@ export default function Home() {
       };
       setBets((current) => [bet, ...current]);
       setPoolAmount((current) => current + stakeNumber);
+      setUsdcBalance((current) => current - stakeNumber);
       setToast(
-        `${selectedSide === "GOAL" ? "Confirmed" : "Overturned"} bet accepted at ${lockedOdds.toFixed(2)}`,
+        `${side === "GOAL" ? "Goal" : "No Goal"} bet accepted at ${lockedOdds.toFixed(2)}`,
       );
-      setBetSlipOpen(false);
     } catch {
       setToast("Bet could not be submitted. Check the API connection.");
     } finally {
@@ -231,7 +254,7 @@ export default function Home() {
     setPoolAmount(STARTING_POOL);
     setBets([]);
     setPayouts([]);
-    setBetSlipOpen(false);
+    setUsdcBalance(walletConnected ? 1000 : 0);
     setToast(null);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
@@ -280,8 +303,40 @@ export default function Home() {
           </div>
         </div>
 
-        <button className="entryCta" onClick={enterMarket}>
-          Watch and bet <span>›</span>
+        <div className="entryWalletGate">
+          <div>
+            <strong>Connect a wallet to continue</strong>
+            <small>Wallets receive 1,000 demo USDC</small>
+          </div>
+          {demoWalletConnected ? (
+            <button
+              className="demoWalletConnected"
+              onClick={() => setDemoWalletConnected(false)}
+            >
+              Demo7…llet · 1,000 USDC
+            </button>
+          ) : connected ? (
+            <WalletConnectButton mounted={mounted} />
+          ) : (
+            <div className="walletChoices">
+              <WalletConnectButton mounted={mounted} />
+              <button
+                className="demoWalletButton"
+                onClick={() => setDemoWalletConnected(true)}
+              >
+                Use demo wallet
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button
+          className="entryCta"
+          disabled={!walletConnected}
+          onClick={enterMarket}
+        >
+          {walletConnected ? "Watch and bet" : "Connect wallet first"}{" "}
+          <span>›</span>
         </button>
         <p className="entryLegal">18+ · Play responsibly · Prototype market</p>
       </main>
@@ -306,7 +361,19 @@ export default function Home() {
           <span className={`connectionBadge ${socketState.toLowerCase()}`}>
             <i /> {socketState}
           </span>
-          <WalletMultiButton />
+          <span className="balancePill">
+            {money.format(usdcBalance)} <small>USDC</small>
+          </span>
+          {demoWalletConnected ? (
+            <button
+              className="demoHeaderWallet"
+              onClick={() => setDemoWalletConnected(false)}
+            >
+              Demo7…llet
+            </button>
+          ) : (
+            <WalletConnectButton mounted={mounted} />
+          )}
         </div>
       </header>
 
@@ -419,26 +486,77 @@ export default function Home() {
                 ? "Accepting bets"
                 : "Opens when the goal occurs"}
           </p>
+          <div className="poolStake">
+            <div className="poolStakeHeader">
+              <label htmlFor="pool-stake">Your stake</label>
+              <span>Available {money.format(usdcBalance)} USDC</span>
+            </div>
+            <div className="stakeField">
+              <span>$</span>
+              <input
+                id="pool-stake"
+                value={stake}
+                onChange={(event) =>
+                  setStake(event.target.value.replace(/[^0-9.]/g, ""))
+                }
+                inputMode="decimal"
+                disabled={!walletConnected || settled}
+                aria-label="Bet stake"
+              />
+              <small>USDC</small>
+            </div>
+            <div className="stakeChips" aria-label="Quick stake amounts">
+              {[1, 10, 100].map((amount) => (
+                <button
+                  key={amount}
+                  className={stakeNumber === amount ? "active" : ""}
+                  disabled={!walletConnected || settled}
+                  onClick={() => setStake(String(amount))}
+                >
+                  ${amount}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="quickOdds">
             <button
               data-testid="goal-bet"
-              disabled={!acceptingBets}
-              onClick={() => openBetSlip("GOAL")}
+              disabled={
+                !walletConnected || !acceptingBets || !validStake || submitting
+              }
+              onClick={() => placeBet("GOAL")}
             >
               <span>GOAL · CONFIRMED</span>
-              <strong>{quote.goalOdds.toFixed(2)}</strong>
-              <small>{percent(quote.goalProbability * 100)} implied</small>
+              <strong>{submitting ? "···" : quote.goalOdds.toFixed(2)}</strong>
+              <small>
+                {validStake
+                  ? `${money.format(stakeNumber * quote.goalOdds)} return`
+                  : "Enter a valid stake"}
+              </small>
             </button>
             <button
               data-testid="no-goal-bet"
-              disabled={!acceptingBets}
-              onClick={() => openBetSlip("NO_GOAL")}
+              disabled={
+                !walletConnected || !acceptingBets || !validStake || submitting
+              }
+              onClick={() => placeBet("NO_GOAL")}
             >
               <span>NO GOAL · OVERTURNED</span>
-              <strong>{quote.noGoalOdds.toFixed(2)}</strong>
-              <small>{percent(quote.noGoalProbability * 100)} implied</small>
+              <strong>
+                {submitting ? "···" : quote.noGoalOdds.toFixed(2)}
+              </strong>
+              <small>
+                {validStake
+                  ? `${money.format(stakeNumber * quote.noGoalOdds)} return`
+                  : "Enter a valid stake"}
+              </small>
             </button>
           </div>
+          {!walletConnected && (
+            <p className="inlineWalletWarning">
+              Connect a wallet to enter this market.
+            </p>
+          )}
           {settled && (
             <button className="replayButton" onClick={replaySimulation}>
               Replay timed simulation
@@ -461,7 +579,11 @@ export default function Home() {
             <button
               className={`poolListCard ${acceptingBets ? "active" : ""}`}
               disabled={!acceptingBets}
-              onClick={() => openBetSlip("NO_GOAL")}
+              onClick={() =>
+                document
+                  .querySelector(".featuredPool")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
             >
               <span className={`poolState ${acceptingBets ? "" : "muted"}`}>
                 {acceptingBets ? "LIVE" : "SOON"}
@@ -510,19 +632,29 @@ export default function Home() {
           <div>
             <span>MY DASHBOARD</span>
             <h2>
-              {connected ? shortAddress(walletAddress) : "Connect your wallet"}
+              {walletConnected
+                ? shortAddress(walletAddress)
+                : "Connect your wallet"}
             </h2>
           </div>
           <span className="walletStatus">
-            {connected ? "CONNECTED" : "PHANTOM"}
+            {walletConnected ? `${money.format(usdcBalance)} USDC` : "PHANTOM"}
           </span>
         </div>
 
-        {!connected ? (
+        {!walletConnected ? (
           <div className="emptyState">
             <strong>Your bets and payouts will appear here.</strong>
-            <p>Connect Phantom to place a bet and track settlement.</p>
-            <WalletMultiButton />
+            <p>Connect Phantom or a preloaded demo wallet to continue.</p>
+            <div className="walletChoices dashboardWalletChoices">
+              <WalletConnectButton mounted={mounted} />
+              <button
+                className="demoWalletButton"
+                onClick={() => setDemoWalletConnected(true)}
+              >
+                Use demo wallet
+              </button>
+            </div>
           </div>
         ) : (
           <div className="dashboardGrid">
@@ -574,99 +706,6 @@ export default function Home() {
         <a href="#">Terms</a>
         <small>Prototype · USDC display values</small>
       </footer>
-
-      {betSlipOpen && (
-        <div className="sheetBackdrop" onClick={() => setBetSlipOpen(false)}>
-          <section
-            className="betSheet"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bet-sheet-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="sheetHandle" />
-            <div className="sheetHeader">
-              <div>
-                <span>POOL #{LIVE_POOL_ID}</span>
-                <h2 id="bet-sheet-title">Place your VAR bet</h2>
-              </div>
-              <button
-                onClick={() => setBetSlipOpen(false)}
-                aria-label="Close bet slip"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="optionToggle">
-              <button
-                className={selectedSide === "GOAL" ? "selected goal" : ""}
-                onClick={() => setSelectedSide("GOAL")}
-              >
-                Confirmed <strong>{quote.goalOdds.toFixed(2)}</strong>
-              </button>
-              <button
-                className={selectedSide === "NO_GOAL" ? "selected noGoal" : ""}
-                onClick={() => setSelectedSide("NO_GOAL")}
-              >
-                Overturned <strong>{quote.noGoalOdds.toFixed(2)}</strong>
-              </button>
-            </div>
-
-            <label className="stakeLabel" htmlFor="stake-input">
-              Amount in USDC
-            </label>
-            <div className="stakeField">
-              <span>$</span>
-              <input
-                id="stake-input"
-                value={stake}
-                onChange={(event) =>
-                  setStake(event.target.value.replace(/[^0-9.]/g, ""))
-                }
-                inputMode="decimal"
-              />
-              <small>USDC</small>
-            </div>
-            <div className="stakeChips">
-              {[1, 10, 100].map((amount) => (
-                <button
-                  key={amount}
-                  className={stakeNumber === amount ? "active" : ""}
-                  onClick={() => setStake(String(amount))}
-                >
-                  ${amount}
-                </button>
-              ))}
-            </div>
-
-            <div className="betSummary">
-              <span>Potential payout</span>
-              <strong>{money.format(potentialPayout)}</strong>
-            </div>
-
-            {connected ? (
-              <button
-                className="placeBetButton"
-                disabled={!validStake || submitting || !acceptingBets}
-                onClick={placeBet}
-              >
-                {submitting
-                  ? "Submitting…"
-                  : `Place bet at ${selectedOdds.toFixed(2)}`}
-              </button>
-            ) : (
-              <div className="connectPrompt">
-                <p>Connect Phantom before placing this bet.</p>
-                <WalletMultiButton />
-              </div>
-            )}
-            <small className="lockNote">
-              Odds lock when the backend accepts the order.
-            </small>
-          </section>
-        </div>
-      )}
     </main>
   );
 }

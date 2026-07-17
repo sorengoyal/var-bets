@@ -334,6 +334,77 @@ a:focus-visible {
   font-size: 28px;
 }
 
+.entryCta:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.entryWalletGate {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 17px;
+  background: rgba(13, 10, 18, 0.72);
+  backdrop-filter: blur(16px);
+}
+
+.entryWalletGate > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.entryWalletGate strong {
+  font-size: 10px;
+}
+
+.entryWalletGate small {
+  color: #8d8592;
+  font-size: 8px;
+}
+
+.walletChoices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.walletChoices .wallet-adapter-button,
+.walletPlaceholder,
+.demoWalletButton,
+.demoWalletConnected,
+.demoHeaderWallet {
+  width: 100%;
+  min-height: 38px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #18141e;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.walletPlaceholder {
+  color: #8d8592;
+  cursor: wait;
+}
+
+.demoWalletButton {
+  color: #0b1712;
+  border: 0;
+  background: var(--goal);
+}
+
+.demoWalletConnected {
+  color: var(--goal);
+  border-color: rgba(69, 232, 168, 0.28);
+  background: rgba(69, 232, 168, 0.09);
+}
+
 .entryLegal {
   margin: 11px 0 0;
   color: #6f6876;
@@ -359,6 +430,28 @@ a:focus-visible {
 
 .headerActions {
   gap: 7px;
+}
+
+.balancePill {
+  padding: 7px 9px;
+  border: 1px solid rgba(69, 232, 168, 0.2);
+  border-radius: 10px;
+  color: var(--goal);
+  background: rgba(69, 232, 168, 0.08);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.balancePill small {
+  font-size: 8px;
+}
+
+.demoHeaderWallet {
+  width: auto;
+  padding: 0 10px;
+  color: #d7cfe0;
 }
 
 .connectionBadge {
@@ -700,6 +793,39 @@ a:focus-visible {
   font-size: 9px;
 }
 
+.poolStake {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.poolStakeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.poolStakeHeader label {
+  color: #b8afbf;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.poolStakeHeader span {
+  color: #756e7b;
+  font-size: 8px;
+}
+
+.inlineWalletWarning {
+  margin: 10px 0 0 !important;
+  color: var(--amber) !important;
+  text-align: center;
+}
+
 .quickOdds {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -754,6 +880,16 @@ a:focus-visible {
   font-size: 8px;
   font-weight: 700;
   opacity: 0.68;
+}
+
+.stakeChips button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.dashboardWalletChoices {
+  max-width: 310px;
+  margin: 0 auto;
 }
 
 .replayButton,

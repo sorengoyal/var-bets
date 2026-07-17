@@ -2,7 +2,9 @@
 
 ## VARBET mobile prototype
 
-The interactive mobile-first VAR betting UI lives in [`apps/web`](apps/web). It includes the real review video, a match-synchronized clock and score, interpolated prediction-market prices, Phantom Wallet Adapter support, pool discovery, a bet sheet, wallet-specific bets and payouts, and automatic settlement.
+The interactive mobile-first VAR betting UI lives in [`apps/web`](apps/web). It includes the real review video, a match-synchronized clock and score, interpolated prediction-market prices, Phantom Wallet Adapter support, pool discovery, inline order entry, wallet-specific bets and payouts, and automatic settlement.
+
+The app is wallet-gated. Phantom wallets are supported, and the prototype also offers a preloaded demo wallet with `1,000 USDC`. Stake entry sits directly inside the live pool; pressing `GOAL` or `NO GOAL` submits immediately at the displayed odds.
 
 ```sh
 pnpm install
