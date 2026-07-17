@@ -13,6 +13,8 @@ pnpm --filter admin-web dev
 
 Open `http://localhost:3003`. The dashboard polls the configured adapter once per second. Use **Restart replay** to reset the Argentina–Egypt incident.
 
+Choose **Repeat scenario** to reuse deterministic seed `20260707`, or **New random run** to generate a fresh bet-arrival and stake sequence. The active seed is displayed in the model badge.
+
 ## Dashboard adapter
 
 `lib/dashboard-adapter.ts` is the frontend boundary. It contains:

@@ -149,6 +149,18 @@ button:focus-visible {
 .resetButton {
   color: var(--purple);
 }
+.replayModeSelect {
+  min-height: 36px;
+  padding: 0 28px 0 10px;
+  cursor: pointer;
+  border: 1px solid rgba(112, 71, 216, 0.2);
+  border-radius: 9px;
+  color: var(--purple);
+  background: var(--surface);
+  font-family: var(--body);
+  font-size: 9px;
+  font-weight: 700;
+}
 .iconButton {
   width: 36px;
   padding: 0;
@@ -881,7 +893,8 @@ button:focus-visible {
   }
   .systemLive,
   .operatorWallet,
-  .modeBadge {
+  .modeBadge,
+  .replayModeSelect {
     display: none;
   }
   .page {

@@ -87,6 +87,8 @@ export interface DashboardSnapshot {
     minimumBookMargin: number;
     maximumUnhedgedLoss: number;
     minimumDecimalOdds: number;
+    runMode: "REPEAT" | "RANDOM";
+    runSeed: number;
   };
   settlement: {
     userGoalBets: { count: number; amount: number };

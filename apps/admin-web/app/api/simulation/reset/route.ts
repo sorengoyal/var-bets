@@ -4,10 +4,17 @@ export const dynamic = "force-dynamic";
 
 const adapterUrl = process.env.ADMIN_DATA_URL ?? "http://localhost:4010";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const body = (await request.json().catch(() => ({}))) as {
+      mode?: "repeat" | "random";
+    };
     const response = await fetch(`${adapterUrl}/v1/simulation/reset`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: body.mode === "random" ? "random" : "repeat",
+      }),
     });
     if (!response.ok) {
       return NextResponse.json(

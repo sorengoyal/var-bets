@@ -8,6 +8,7 @@ import type {
 import { useDashboardData } from "../lib/dashboard-adapter";
 
 type Series = "ARG" | "EGY" | "ALL";
+type ReplayMode = "repeat" | "random";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -250,6 +251,7 @@ export default function AdminDashboard() {
   const [series, setSeries] = useState<Series>("ALL");
   const [poolExpanded, setPoolExpanded] = useState(true);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
+  const [replayMode, setReplayMode] = useState<ReplayMode>("repeat");
   const settlementWasShown = useRef(false);
   const { connected, resetSimulation, snapshot } = useDashboardData();
   const { fixture, market, model, pool } = snapshot;
@@ -274,7 +276,7 @@ export default function AdminDashboard() {
   const restartReplay = async () => {
     setSettlementModalOpen(false);
     settlementWasShown.current = false;
-    await resetSimulation();
+    await resetSimulation(replayMode);
   };
 
   return (
@@ -287,12 +289,25 @@ export default function AdminDashboard() {
           </span>
           <span className="modeBadge">{snapshot.mode}</span>
           {snapshot.mode === "SIMULATION" && (
-            <button
-              className="resetButton"
-              onClick={() => void restartReplay()}
-            >
-              Restart replay
-            </button>
+            <>
+              <select
+                className="replayModeSelect"
+                aria-label="Replay mode"
+                value={replayMode}
+                onChange={(event) =>
+                  setReplayMode(event.target.value as ReplayMode)
+                }
+              >
+                <option value="repeat">Repeat scenario</option>
+                <option value="random">New random run</option>
+              </select>
+              <button
+                className="resetButton"
+                onClick={() => void restartReplay()}
+              >
+                Restart replay
+              </button>
+            </>
           )}
           <button className="operatorWallet">0x5825…8Fe1</button>
           <button className="iconButton" aria-label="Settings">
@@ -316,7 +331,8 @@ export default function AdminDashboard() {
             <strong>50% Goal / 50% No Goal</strong>
             <small>
               {model.simulations.toLocaleString()} Monte Carlo paths ·{" "}
-              {snapshot.source}
+              {(model.runMode ?? "REPEAT").toLowerCase()} seed{" "}
+              {(model.runSeed ?? 20260707).toLocaleString()}
             </small>
           </div>
         </section>

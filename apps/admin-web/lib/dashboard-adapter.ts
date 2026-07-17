@@ -87,6 +87,8 @@ const initialSnapshot: DashboardSnapshot = {
     minimumBookMargin: 0.2,
     maximumUnhedgedLoss: 1000,
     minimumDecimalOdds: 1.05,
+    runMode: "REPEAT",
+    runSeed: 20260707,
   },
   settlement: {
     userGoalBets: { count: 0, amount: 0 },
@@ -102,7 +104,7 @@ const initialSnapshot: DashboardSnapshot = {
 
 export interface DashboardDataAdapter {
   getSnapshot(signal?: AbortSignal): Promise<DashboardSnapshot>;
-  resetSimulation(): Promise<DashboardSnapshot>;
+  resetSimulation(mode: "repeat" | "random"): Promise<DashboardSnapshot>;
 }
 
 export class HttpDashboardDataAdapter implements DashboardDataAdapter {
@@ -117,9 +119,11 @@ export class HttpDashboardDataAdapter implements DashboardDataAdapter {
     return (await response.json()) as DashboardSnapshot;
   }
 
-  async resetSimulation(): Promise<DashboardSnapshot> {
+  async resetSimulation(mode: "repeat" | "random"): Promise<DashboardSnapshot> {
     const response = await fetch(`${this.baseUrl}/simulation/reset`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
     });
     if (!response.ok) throw new Error(`SIMULATION_RESET_${response.status}`);
     return (await response.json()) as DashboardSnapshot;
@@ -153,8 +157,8 @@ export function useDashboardData() {
     };
   }, [refresh]);
 
-  const resetSimulation = useCallback(async () => {
-    const next = await adapter.resetSimulation();
+  const resetSimulation = useCallback(async (mode: "repeat" | "random") => {
+    const next = await adapter.resetSimulation(mode);
     setSnapshot(next);
     setConnected(true);
   }, []);

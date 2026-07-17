@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import type {
   BetActivity,
   DashboardSnapshot,
@@ -69,6 +69,8 @@ export class SimulationRuntime {
   private noGoalRequestedCents = 0;
   private rejectedBets = 0;
   private settled = false;
+  private runMode: "REPEAT" | "RANDOM" = "REPEAT";
+  private runSeed = 20260707;
   private timer: NodeJS.Timeout | null = null;
   private readonly history: PricePoint[] = [];
   private readonly recentBets: BetActivity[] = [];
@@ -95,7 +97,7 @@ export class SimulationRuntime {
     this.timer = null;
   }
 
-  reset(): void {
+  reset(mode: "repeat" | "random" = "repeat"): void {
     this.pause();
     this.sequence = 0;
     this.elapsedSecond = 0;
@@ -107,7 +109,9 @@ export class SimulationRuntime {
     this.settled = false;
     this.history.splice(0);
     this.recentBets.splice(0);
-    this.random = new SeededRandom(20260707);
+    this.runMode = mode === "random" ? "RANDOM" : "REPEAT";
+    this.runSeed = mode === "random" ? randomInt(1, 0x7fffffff) : 20260707;
+    this.random = new SeededRandom(this.runSeed);
     const point = polymarketPoint(0);
     const now = new Date();
     this.ledger = new InMemoryLedger();
@@ -248,7 +252,11 @@ export class SimulationRuntime {
         profitIfNoGoal: profitIfNoGoalCents(book) / 100,
         worstCaseProfit: worstCaseProfitCents(book) / 100,
       },
-      model: MODEL,
+      model: {
+        ...MODEL,
+        runMode: this.runMode,
+        runSeed: this.runSeed,
+      },
       settlement: {
         userGoalBets: {
           count: goalOrders.length,

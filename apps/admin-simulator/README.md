@@ -35,3 +35,5 @@ The service listens on `http://localhost:4010`. Set `SIM_TICK_MS` to replay fast
 - `POST /v1/simulation/resume`
 
 This is not a profitability forecast or a production hedge implementation. Its market-to-Goal calibration and hedge ratio are explicitly simulation-only.
+
+`POST /v1/simulation/reset` accepts `{ "mode": "repeat" }` to reuse seed `20260707`, or `{ "mode": "random" }` to create a fresh seed. The active mode and seed are returned in every dashboard snapshot.
