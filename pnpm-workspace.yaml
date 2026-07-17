@@ -5,8 +5,9 @@ packages:
   - "research/var-betting-engine/execution"
 
 allowBuilds:
-  esbuild: set this to true or false
-  unrs-resolver: set this to true or false
+  '@scarf/scarf': false
+  esbuild: true
+  unrs-resolver: false
 
 # Allow these dependencies to run build scripts
 onlyBuiltDependencies:
