@@ -18,7 +18,7 @@ Open `http://localhost:3000`, connect a wallet, and let the supplied match video
 - Video `00:00` / match `57:38`: Argentina trail `0–1`; the pre-goal market signal remains unchanged and betting is closed.
 - Video `00:17` / match `57:55`: the ball enters the net, the signal switches, Egypt temporarily lead `0–2`, and betting opens.
 - Video `01:07` / match `58:45`: the referee reaches the monitor and the review status changes.
-- Video `02:07` / match `59:45`: betting closes automatically, the decision resolves to `NO GOAL`, and the score returns to `0–1`.
+- Video `02:07` / match `59:45`: the announcement closes betting, resolves `NO GOAL`, returns the score to `0–1`, jumps the Polymarket signal to the post-decision observation, and opens a stake/payout/net-result modal.
 - Market percentages interpolate between `42.72/53.18`, `23.18/75.57`, and `33.19/66.54` for Argentina/Egypt, then move toward the next post-decision observation.
 
 Copy `apps/web/.env.example` to `apps/web/.env.local` to connect the frontend to the Nest API and a Solana RPC endpoint. Without `NEXT_PUBLIC_API_URL`, the timed match experience uses local data.

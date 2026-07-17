@@ -16,12 +16,12 @@ export const MATCH_TIMELINE = {
 } as const;
 
 const preGoalPoint = { argentina: 57.65, egypt: 42.84 } as const;
+const postDecisionPoint = { argentina: 50.45, egypt: 49.78 } as const;
 
 const marketPoints = [
   { at: MATCH_TIMELINE.goalAt, argentina: 42.72, egypt: 53.18 },
   { at: MATCH_TIMELINE.monitorAt, argentina: 23.18, egypt: 75.57 },
   { at: MATCH_TIMELINE.decisionAt, argentina: 33.19, egypt: 66.54 },
-  { at: MATCH_TIMELINE.videoDuration, argentina: 36.68, egypt: 63.15 },
 ] as const;
 
 function interpolate(start: number, end: number, progress: number) {
@@ -55,6 +55,9 @@ export function quoteAt(elapsedSeconds: number): MarketQuote {
   );
   if (elapsed < MATCH_TIMELINE.goalAt) {
     return createQuote(preGoalPoint.argentina, preGoalPoint.egypt);
+  }
+  if (elapsed >= MATCH_TIMELINE.decisionAt) {
+    return createQuote(postDecisionPoint.argentina, postDecisionPoint.egypt);
   }
 
   const nextIndex = marketPoints.findIndex((point) => point.at >= elapsed);

@@ -1277,6 +1277,131 @@ footer small {
   font-size: 8px;
 }
 
+.settlementBackdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  padding: 18px;
+  place-items: center;
+  background: rgba(3, 2, 6, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.settlementModal {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  border: 1px solid rgba(69, 232, 168, 0.24);
+  border-radius: 24px;
+  background: linear-gradient(180deg, #1a1621, #0e0c12);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
+  text-align: center;
+  animation: sheetIn 0.3s ease both;
+}
+
+.settlementIcon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 16px;
+  color: #07140f;
+  background: var(--goal);
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.settlementModal > p {
+  margin: 0;
+  color: var(--goal);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.settlementModal h2 {
+  margin: 4px 0 2px;
+  font-family: var(--font-display);
+  font-size: 38px;
+  line-height: 1;
+}
+
+.settlementModal > small {
+  color: #8d8592;
+  font-size: 9px;
+}
+
+.settlementBreakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.settlementBreakdown div {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #0c0a10;
+}
+
+.settlementBreakdown span,
+.settlementNet span {
+  color: #7f7786;
+  font-size: 9px;
+}
+
+.settlementBreakdown strong {
+  font-family: var(--font-display);
+  font-size: 21px;
+}
+
+.settlementNet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  padding: 14px;
+  border-radius: 13px;
+}
+
+.settlementNet.won {
+  border: 1px solid rgba(69, 232, 168, 0.25);
+  background: rgba(69, 232, 168, 0.09);
+}
+
+.settlementNet.lost {
+  border: 1px solid rgba(255, 112, 123, 0.25);
+  background: rgba(255, 112, 123, 0.09);
+}
+
+.settlementNet strong {
+  color: var(--goal);
+  font-family: var(--font-display);
+  font-size: 25px;
+}
+
+.settlementNet.lost strong {
+  color: var(--no-goal);
+}
+
+.settlementModal > button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 14px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 13px;
+  color: #07140f;
+  background: white;
+  font-weight: 800;
+}
+
 .sheetBackdrop {
   position: fixed;
   z-index: 70;

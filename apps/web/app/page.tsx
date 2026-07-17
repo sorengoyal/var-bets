@@ -26,6 +26,12 @@ type PayoutRecord = {
   status: "CONFIRMED";
 };
 
+type SettlementSummary = {
+  totalStaked: number;
+  payout: number;
+  net: number;
+};
+
 const LIVE_POOL_ID = 20260707;
 const STARTING_POOL = 2840;
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -82,6 +88,8 @@ export default function Home() {
   const [stake, setStake] = useState("10");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [settlementSummary, setSettlementSummary] =
+    useState<SettlementSummary | null>(null);
 
   const walletConnected = connected || demoWalletConnected;
   const walletAddress =
@@ -174,6 +182,15 @@ export default function Home() {
     const winnings = bets
       .filter((bet) => bet.side === "NO_GOAL")
       .reduce((total, bet) => total + bet.payout, 0);
+    const totalStaked = bets.reduce((total, bet) => total + bet.amount, 0);
+
+    if (bets.length > 0) {
+      setSettlementSummary({
+        totalStaked,
+        payout: winnings,
+        net: winnings - totalStaked,
+      });
+    }
 
     if (winnings > 0) {
       setUsdcBalance((current) => current + winnings);
@@ -341,7 +358,7 @@ export default function Home() {
               <span>POLYMARKET SIGNAL</span>
               <small>Live match winner probabilities</small>
             </div>
-            <strong>{settled ? "CLOSED" : "LIVE"}</strong>
+            <strong>{settled ? "UPDATED" : "LIVE"}</strong>
           </div>
           <div className="signalBar">
             <span style={{ width: `${quote.argentina}%` }} />
@@ -508,7 +525,7 @@ export default function Home() {
         ) : (
           <div className="dashboardGrid">
             <div className="dashboardColumn">
-              <h3>My active bets</h3>
+              <h3>{settled ? "Bet history" : "My active bets"}</h3>
               {bets.length === 0 ? (
                 <p className="emptyLine">No active bets yet.</p>
               ) : (
@@ -548,6 +565,42 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {settlementSummary && (
+        <div className="settlementBackdrop">
+          <section
+            className="settlementModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settlement-title"
+          >
+            <span className="settlementIcon">✓</span>
+            <p>OFFICIAL VAR DECISION</p>
+            <h2 id="settlement-title">NO GOAL</h2>
+            <small>The on-field goal has been overturned.</small>
+
+            <div className="settlementBreakdown">
+              <div>
+                <span>Total bet</span>
+                <strong>{money.format(settlementSummary.totalStaked)}</strong>
+              </div>
+              <div>
+                <span>Total payout</span>
+                <strong>{money.format(settlementSummary.payout)}</strong>
+              </div>
+            </div>
+
+            <div
+              className={`settlementNet ${settlementSummary.net >= 0 ? "won" : "lost"}`}
+            >
+              <span>{settlementSummary.net >= 0 ? "You won" : "You lost"}</span>
+              <strong>{money.format(Math.abs(settlementSummary.net))}</strong>
+            </div>
+
+            <button onClick={() => setSettlementSummary(null)}>Done</button>
+          </section>
+        </div>
+      )}
 
       <footer>
         <span>18+</span>
