@@ -76,12 +76,16 @@ export default function Home() {
   const walletAddress = publicKey?.toBase58() ?? "";
   const quote = useMemo(() => quoteAt(elapsed), [elapsed]);
   const reviewPhase = useMemo(() => reviewPhaseAt(elapsed), [elapsed]);
-  const acceptingBets = elapsed < SIMULATION.decisionAt;
-  const score = acceptingBets ? "0 – 2" : "0 – 1";
+  const goalOccurred = elapsed >= SIMULATION.goalAt;
+  const settled = elapsed >= SIMULATION.decisionAt;
+  const acceptingBets = goalOccurred && !settled;
+  const score = goalOccurred && !settled ? "0 – 2" : "0 – 1";
   const matchClock = matchClockAt(elapsed);
   const secondsRemaining = Math.max(
     0,
-    Math.ceil(SIMULATION.decisionAt - elapsed),
+    Math.ceil(
+      (goalOccurred ? SIMULATION.decisionAt : SIMULATION.goalAt) - elapsed,
+    ),
   );
   const stakeNumber = Number(stake);
   const selectedOdds =
@@ -145,7 +149,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (acceptingBets || settlementHandled.current) return;
+    if (!settled || settlementHandled.current) return;
     settlementHandled.current = true;
 
     const winnings = bets
@@ -167,7 +171,7 @@ export default function Home() {
       setToast("Market closed automatically: NO GOAL");
     }
     setBetSlipOpen(false);
-  }, [acceptingBets, bets]);
+  }, [bets, settled]);
 
   function enterMarket() {
     setHasEntered(true);
@@ -314,7 +318,7 @@ export default function Home() {
               <span>ARG</span> {score} <span>EGY</span>
             </h2>
           </div>
-          <div className={`matchClock ${acceptingBets ? "" : "settled"}`}>
+          <div className={`matchClock ${settled ? "settled" : ""}`}>
             <i /> {matchClock}
           </div>
         </div>
@@ -345,9 +349,9 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={`statusCard ${acceptingBets ? "" : "statusSettled"}`}>
+        <div className={`statusCard ${settled ? "statusSettled" : ""}`}>
           <div className="statusPulse">
-            <span>{acceptingBets ? "VAR" : "✓"}</span>
+            <span>{settled ? "✓" : goalOccurred ? "VAR" : "LIVE"}</span>
           </div>
           <div>
             <p>{reviewPhase.eyebrow}</p>
@@ -356,7 +360,13 @@ export default function Home() {
           </div>
           <div className="closeTimer">
             <strong>{secondsRemaining}s</strong>
-            <small>{acceptingBets ? "to decision" : "closed"}</small>
+            <small>
+              {!goalOccurred
+                ? "to market"
+                : acceptingBets
+                  ? "to decision"
+                  : "closed"}
+            </small>
           </div>
         </div>
 
@@ -366,7 +376,13 @@ export default function Home() {
               <span>POLYMARKET SIGNAL</span>
               <small>Event-aligned linear interpolation</small>
             </div>
-            <strong>{acceptingBets ? "UPDATING" : "FINAL"}</strong>
+            <strong>
+              {!goalOccurred
+                ? "PRE-GOAL"
+                : acceptingBets
+                  ? "UPDATING"
+                  : "FINAL"}
+            </strong>
           </div>
           <div className="signalBar">
             <span style={{ width: `${quote.argentina}%` }} />
@@ -383,15 +399,25 @@ export default function Home() {
           </div>
         </section>
 
-        <section className={`featuredPool ${acceptingBets ? "" : "resolved"}`}>
+        <section className={`featuredPool ${settled ? "resolved" : ""}`}>
           <div className="poolTopline">
-            <span>{acceptingBets ? "ACTIVE POOL" : "RESOLVED POOL"}</span>
+            <span>
+              {settled
+                ? "RESOLVED POOL"
+                : acceptingBets
+                  ? "ACTIVE POOL"
+                  : "MARKET ARMED"}
+            </span>
             <strong>{money.format(poolAmount)} USDC</strong>
           </div>
           <h3>Will Egypt&apos;s goal stand?</h3>
           <p>
             Pool #{LIVE_POOL_ID} · Launched at 57:55 ·{" "}
-            {acceptingBets ? "Accepting bets" : "Overturned and paid"}
+            {settled
+              ? "Overturned and paid"
+              : acceptingBets
+                ? "Accepting bets"
+                : "Opens when the goal occurs"}
           </p>
           <div className="quickOdds">
             <button
@@ -413,7 +439,7 @@ export default function Home() {
               <small>{percent(quote.noGoalProbability * 100)} implied</small>
             </button>
           </div>
-          {!acceptingBets && (
+          {settled && (
             <button className="replayButton" onClick={replaySimulation}>
               Replay timed simulation
             </button>
@@ -427,26 +453,30 @@ export default function Home() {
             <span>MARKETS</span>
             <h2>Current and historical pools</h2>
           </div>
-          <span className="countBadge">{acceptingBets ? 2 : 3}</span>
+          <span className="countBadge">3</span>
         </div>
 
         <div className="poolList">
-          {acceptingBets && (
+          {!settled && (
             <button
-              className="poolListCard active"
+              className={`poolListCard ${acceptingBets ? "active" : ""}`}
+              disabled={!acceptingBets}
               onClick={() => openBetSlip("NO_GOAL")}
             >
-              <span className="poolState">LIVE</span>
+              <span className={`poolState ${acceptingBets ? "" : "muted"}`}>
+                {acceptingBets ? "LIVE" : "SOON"}
+              </span>
               <div>
                 <strong>Argentina vs Egypt</strong>
                 <small>
-                  Goal review · {matchClock} · {money.format(poolAmount)}
+                  {acceptingBets ? "Goal review" : "Waiting for goal"} ·{" "}
+                  {matchClock} · {money.format(poolAmount)}
                 </small>
               </div>
-              <span>Open ›</span>
+              <span>{acceptingBets ? "Open ›" : "Armed"}</span>
             </button>
           )}
-          {!acceptingBets && (
+          {settled && (
             <article className="poolListCard won">
               <span className="poolState">PAID</span>
               <div>

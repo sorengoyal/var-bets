@@ -820,6 +820,11 @@ button.poolListCard {
   cursor: pointer;
 }
 
+button.poolListCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .poolListCard.active {
   border-color: rgba(168, 106, 255, 0.3);
   background: rgba(98, 51, 153, 0.14);

@@ -13,9 +13,10 @@ Open `http://localhost:3000`, enter the live market, and let the supplied match 
 
 ### Argentina vs Egypt simulation
 
-- `57:55`: the video and market open with Egypt leading `0–2` after the ball enters the net.
-- `58:45`: the referee reaches the monitor and the review status changes.
-- `59:45`: betting closes automatically, the decision resolves to `NO GOAL`, and the score returns to `0–1`.
+- Video `00:00` / match `57:38`: Argentina trail `0–1`; the pre-goal market signal remains unchanged and betting is closed.
+- Video `00:17` / match `57:55`: the ball enters the net, the signal switches, Egypt temporarily lead `0–2`, and betting opens.
+- Video `01:07` / match `58:45`: the referee reaches the monitor and the review status changes.
+- Video `02:07` / match `59:45`: betting closes automatically, the decision resolves to `NO GOAL`, and the score returns to `0–1`.
 - Market percentages interpolate between `42.72/53.18`, `23.18/75.57`, and `33.19/66.54` for Argentina/Egypt, then move toward the next post-decision observation.
 
 Copy `apps/web/.env.example` to `apps/web/.env.local` to connect the frontend to the Nest API and a Solana RPC endpoint. Without `NEXT_PUBLIC_API_URL`, the timed experience runs in local simulation mode.
