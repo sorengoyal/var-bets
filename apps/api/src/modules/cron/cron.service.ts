@@ -25,7 +25,7 @@ export class CronService {
     private readonly betRepo: Repository<Bet>,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async handleFixturePoller() {
     this.logger.log('Running Fixture Poller...');
     await this.fixturesService.syncFromMockService();
