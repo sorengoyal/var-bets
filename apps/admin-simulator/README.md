@@ -16,6 +16,8 @@ Quotes target a `20%` theoretical gross margin, which requires a `25%` base over
 
 The replay hedges `15%` of each accepted order's uncovered payout liability. This keeps hedge orders visible while avoiding the unrealistic cost of attempting to reinsure nearly half of every individual order. A production adapter should hedge net book exposure rather than copy this demonstration ratio.
 
+At settlement, the snapshot reports accepted user bet counts and stakes by side, filled Polymarket hedge-order counts and notional by side, gross winning-user payout, and realized event profit from the engine book.
+
 ## Run
 
 ```bash

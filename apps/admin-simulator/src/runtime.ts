@@ -183,6 +183,12 @@ export class SimulationRuntime {
         order.status === OrderStatus.SETTLEMENT_PENDING ||
         order.status === OrderStatus.SETTLED,
     );
+    const goalOrders = acceptedOrders.filter(
+      (order) => order.side === Side.GOAL,
+    );
+    const noGoalOrders = acceptedOrders.filter(
+      (order) => order.side === Side.NO_GOAL,
+    );
     const latestGoal = [...this.recentBets].find(
       (bet) => bet.side === Side.GOAL && bet.accepted,
     );
@@ -237,6 +243,33 @@ export class SimulationRuntime {
         worstCaseProfit: worstCaseProfitCents(book) / 100,
       },
       model: MODEL,
+      settlement: {
+        userGoalBets: {
+          count: goalOrders.length,
+          amount:
+            goalOrders.reduce((total, order) => total + order.stakeCents, 0) /
+            100,
+        },
+        userNoGoalBets: {
+          count: noGoalOrders.length,
+          amount:
+            noGoalOrders.reduce((total, order) => total + order.stakeCents, 0) /
+            100,
+        },
+        polymarketGoalHedges: {
+          count: this.hedging.totals.goal.count,
+          amount: this.hedging.totals.goal.notionalCents / 100,
+        },
+        polymarketNoGoalHedges: {
+          count: this.hedging.totals.noGoal.count,
+          amount: this.hedging.totals.noGoal.notionalCents / 100,
+        },
+        totalPayout: (this.settled ? book.payoutIfNoGoalCents : 0) / 100,
+        totalProfit:
+          (this.settled
+            ? profitIfNoGoalCents(book)
+            : worstCaseProfitCents(book)) / 100,
+      },
       recentBets: [...this.recentBets],
       recentHedges: [...this.hedging.activity],
     };

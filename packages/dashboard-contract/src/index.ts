@@ -87,6 +87,14 @@ export interface DashboardSnapshot {
     maximumUnhedgedLoss: number;
     minimumDecimalOdds: number;
   };
+  settlement: {
+    userGoalBets: { count: number; amount: number };
+    userNoGoalBets: { count: number; amount: number };
+    polymarketGoalHedges: { count: number; amount: number };
+    polymarketNoGoalHedges: { count: number; amount: number };
+    totalPayout: number;
+    totalProfit: number;
+  };
   recentBets: BetActivity[];
   recentHedges: HedgeActivity[];
 }

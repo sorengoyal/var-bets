@@ -87,6 +87,14 @@ const initialSnapshot: DashboardSnapshot = {
     maximumUnhedgedLoss: 1000,
     minimumDecimalOdds: 1.05,
   },
+  settlement: {
+    userGoalBets: { count: 0, amount: 0 },
+    userNoGoalBets: { count: 0, amount: 0 },
+    polymarketGoalHedges: { count: 0, amount: 0 },
+    polymarketNoGoalHedges: { count: 0, amount: 0 },
+    totalPayout: 8689.15,
+    totalProfit: 1321.6526,
+  },
   recentBets: [],
   recentHedges: [],
 };

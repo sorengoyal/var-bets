@@ -11,6 +11,10 @@ import { clockLabel } from "./polymarket-path.ts";
 
 export class SimulatedPolymarketHedge implements HedgePort {
   readonly activity: HedgeActivity[] = [];
+  readonly totals = {
+    goal: { count: 0, notionalCents: 0 },
+    noGoal: { count: 0, notionalCents: 0 },
+  };
   elapsedSecond = 0;
   private orderCount = 0;
 
@@ -44,6 +48,13 @@ export class SimulatedPolymarketHedge implements HedgePort {
       status: filled ? "FILLED" : "REJECTED",
     });
     this.activity.splice(30);
+
+    if (filled) {
+      const total =
+        order.side === Side.GOAL ? this.totals.goal : this.totals.noGoal;
+      total.count += 1;
+      total.notionalCents += grossPayoffCents;
+    }
 
     return {
       hedgeOrderId,

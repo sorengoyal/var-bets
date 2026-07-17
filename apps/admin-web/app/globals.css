@@ -671,6 +671,63 @@ button:focus-visible {
   font-size: 16px;
 }
 
+.settlementSummary {
+  margin-top: 9px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-3);
+}
+.settlementTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.settlementTitle span,
+.settlementGrid article > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.settlementTitle h4 {
+  margin: 3px 0 0;
+  font-family: var(--display);
+  font-size: 14px;
+}
+.settlementTitle b {
+  padding: 5px 7px;
+  border-radius: 6px;
+  color: var(--green);
+  background: rgba(67, 230, 164, 0.1);
+  font-size: 8px;
+}
+.settlementGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.settlementGrid article {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.settlementGrid strong {
+  font-family: var(--display);
+  font-size: 17px;
+}
+.settlementGrid small {
+  color: var(--muted);
+  font-size: 8px;
+}
+.settlementGrid .settlementMoney {
+  background: linear-gradient(145deg, var(--surface), var(--surface-2));
+}
+
 .lowerGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -807,6 +864,9 @@ button:focus-visible {
     min-width: 540px;
   }
   .riskStrip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .settlementGrid {
     grid-template-columns: 1fr 1fr;
   }
 }
