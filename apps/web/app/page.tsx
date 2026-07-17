@@ -183,6 +183,12 @@ export default function Home() {
       return;
     }
     if (settlementHandled.current) return;
+
+    if (bets.length === 0) {
+      setToast("Market closed automatically: NO GOAL");
+      return;
+    }
+
     settlementHandled.current = true;
 
     const winnings = bets
@@ -190,14 +196,12 @@ export default function Home() {
       .reduce((total, bet) => total + bet.payout, 0);
     const totalStaked = bets.reduce((total, bet) => total + bet.amount, 0);
 
-    if (bets.length > 0) {
-      setSettlementSummary({
-        totalStaked,
-        payout: winnings,
-        net: winnings - totalStaked,
-        endingBalance: usdcBalance + winnings,
-      });
-    }
+    setSettlementSummary({
+      totalStaked,
+      payout: winnings,
+      net: winnings - totalStaked,
+      endingBalance: usdcBalance + winnings,
+    });
 
     if (winnings > 0) {
       setUsdcBalance((current) => current + winnings);
