@@ -7,7 +7,7 @@ export type MarketQuote = {
   noGoalOdds: number;
 };
 
-export const SIMULATION = {
+export const MATCH_TIMELINE = {
   matchStartSeconds: 57 * 60 + 38,
   goalAt: 17,
   monitorAt: 67,
@@ -18,10 +18,10 @@ export const SIMULATION = {
 const preGoalPoint = { argentina: 57.65, egypt: 42.84 } as const;
 
 const marketPoints = [
-  { at: SIMULATION.goalAt, argentina: 42.72, egypt: 53.18 },
-  { at: SIMULATION.monitorAt, argentina: 23.18, egypt: 75.57 },
-  { at: SIMULATION.decisionAt, argentina: 33.19, egypt: 66.54 },
-  { at: SIMULATION.videoDuration, argentina: 36.68, egypt: 63.15 },
+  { at: MATCH_TIMELINE.goalAt, argentina: 42.72, egypt: 53.18 },
+  { at: MATCH_TIMELINE.monitorAt, argentina: 23.18, egypt: 75.57 },
+  { at: MATCH_TIMELINE.decisionAt, argentina: 33.19, egypt: 66.54 },
+  { at: MATCH_TIMELINE.videoDuration, argentina: 36.68, egypt: 63.15 },
 ] as const;
 
 function interpolate(start: number, end: number, progress: number) {
@@ -51,9 +51,9 @@ function createQuote(argentina: number, egypt: number): MarketQuote {
 export function quoteAt(elapsedSeconds: number): MarketQuote {
   const elapsed = Math.max(
     0,
-    Math.min(elapsedSeconds, SIMULATION.videoDuration),
+    Math.min(elapsedSeconds, MATCH_TIMELINE.videoDuration),
   );
-  if (elapsed < SIMULATION.goalAt) {
+  if (elapsed < MATCH_TIMELINE.goalAt) {
     return createQuote(preGoalPoint.argentina, preGoalPoint.egypt);
   }
 
@@ -69,40 +69,8 @@ export function quoteAt(elapsedSeconds: number): MarketQuote {
 }
 
 export function matchClockAt(elapsedSeconds: number) {
-  const total = SIMULATION.matchStartSeconds + Math.floor(elapsedSeconds);
+  const total = MATCH_TIMELINE.matchStartSeconds + Math.floor(elapsedSeconds);
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-export function reviewPhaseAt(elapsedSeconds: number) {
-  if (elapsedSeconds >= SIMULATION.decisionAt) {
-    return {
-      eyebrow: "OFFICIAL DECISION · SETTLED",
-      title: "NO GOAL",
-      detail: "The goal has been overturned",
-    };
-  }
-
-  if (elapsedSeconds >= SIMULATION.monitorAt) {
-    return {
-      eyebrow: "VAR REVIEW · MONITOR CHECK",
-      title: "Referee at the monitor",
-      detail: "Market remains open until the final signal",
-    };
-  }
-
-  if (elapsedSeconds < SIMULATION.goalAt) {
-    return {
-      eyebrow: "MATCH LIVE · MARKET ARMED",
-      title: "Waiting for the goal",
-      detail: "The market opens when the ball enters the net",
-    };
-  }
-
-  return {
-    eyebrow: "VAR REVIEW · MARKET OPEN",
-    title: "Will the goal stand?",
-    detail: "VAR is checking the scoring play",
-  };
 }

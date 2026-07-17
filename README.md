@@ -1,19 +1,19 @@
 # Turborepo starter
 
-## VARBET mobile prototype
+## VARBET mobile app
 
 The interactive mobile-first VAR betting UI lives in [`apps/web`](apps/web). It includes the real review video, a match-synchronized clock and score, interpolated prediction-market prices, Phantom Wallet Adapter support, pool discovery, inline order entry, wallet-specific bets and payouts, and automatic settlement.
 
-The app is wallet-gated. Phantom wallets are supported, and the prototype also offers a preloaded demo wallet with `1,000 USDC`. Stake entry sits directly inside the live pool; pressing `GOAL` or `NO GOAL` submits immediately at the displayed odds.
+The app is wallet-gated. Phantom wallets are supported, and development mode also offers a preloaded demo wallet with `1,000 USDC`. Connected users enter the live stream automatically. Stake entry appears with the market when the goal occurs; pressing `GOAL` or `NO GOAL` submits immediately at the displayed odds.
 
 ```sh
 pnpm install
 pnpm --filter web dev
 ```
 
-Open `http://localhost:3000`, enter the live market, and let the supplied match video drive the review through settlement. This is a no-real-money product prototype; production payment, identity, market-data, geofencing, and regulatory integrations are intentionally not connected.
+Open `http://localhost:3000`, connect a wallet, and let the supplied match video drive the review through settlement. This is a no-real-money development experience; production payment, identity, market-data, geofencing, and regulatory integrations are intentionally not connected.
 
-### Argentina vs Egypt simulation
+### Argentina vs Egypt event timeline
 
 - Video `00:00` / match `57:38`: Argentina trail `0–1`; the pre-goal market signal remains unchanged and betting is closed.
 - Video `00:17` / match `57:55`: the ball enters the net, the signal switches, Egypt temporarily lead `0–2`, and betting opens.
@@ -21,7 +21,7 @@ Open `http://localhost:3000`, enter the live market, and let the supplied match 
 - Video `02:07` / match `59:45`: betting closes automatically, the decision resolves to `NO GOAL`, and the score returns to `0–1`.
 - Market percentages interpolate between `42.72/53.18`, `23.18/75.57`, and `33.19/66.54` for Argentina/Egypt, then move toward the next post-decision observation.
 
-Copy `apps/web/.env.example` to `apps/web/.env.local` to connect the frontend to the Nest API and a Solana RPC endpoint. Without `NEXT_PUBLIC_API_URL`, the timed experience runs in local simulation mode.
+Copy `apps/web/.env.example` to `apps/web/.env.local` to connect the frontend to the Nest API and a Solana RPC endpoint. Without `NEXT_PUBLIC_API_URL`, the timed match experience uses local data.
 
 The API exposes REST endpoints under `/api`, Swagger under `/docs`, and Socket.IO events named `poolUpdated` and `payoutExecuted`.
 

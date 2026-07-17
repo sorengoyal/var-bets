@@ -5,7 +5,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { io } from "socket.io-client";
 
-import { matchClockAt, quoteAt, reviewPhaseAt, SIMULATION } from "./simulation";
+import { MATCH_TIMELINE, matchClockAt, quoteAt } from "./simulation";
 
 type Side = "GOAL" | "NO_GOAL";
 
@@ -82,26 +82,16 @@ export default function Home() {
   const [stake, setStake] = useState("10");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [socketState, setSocketState] = useState<"LIVE" | "SIMULATED">(
-    API_URL ? "LIVE" : "SIMULATED",
-  );
 
   const walletConnected = connected || demoWalletConnected;
   const walletAddress =
     publicKey?.toBase58() ?? (demoWalletConnected ? "Demo7xUSDC9Wallet" : "");
   const quote = useMemo(() => quoteAt(elapsed), [elapsed]);
-  const reviewPhase = useMemo(() => reviewPhaseAt(elapsed), [elapsed]);
-  const goalOccurred = elapsed >= SIMULATION.goalAt;
-  const settled = elapsed >= SIMULATION.decisionAt;
+  const goalOccurred = elapsed >= MATCH_TIMELINE.goalAt;
+  const settled = elapsed >= MATCH_TIMELINE.decisionAt;
   const acceptingBets = goalOccurred && !settled;
   const score = goalOccurred && !settled ? "0 – 2" : "0 – 1";
   const matchClock = matchClockAt(elapsed);
-  const secondsRemaining = Math.max(
-    0,
-    Math.ceil(
-      (goalOccurred ? SIMULATION.decisionAt : SIMULATION.goalAt) - elapsed,
-    ),
-  );
   const stakeNumber = Number(stake);
   const validStake =
     Number.isFinite(stakeNumber) &&
@@ -120,8 +110,12 @@ export default function Home() {
   }, [walletConnected]);
 
   useEffect(() => {
-    if (walletConnected || !hasEntered) return;
-    videoRef.current?.pause();
+    if (walletConnected) {
+      setHasEntered(true);
+      return;
+    }
+
+    if (hasEntered) videoRef.current?.pause();
     setHasEntered(false);
   }, [hasEntered, walletConnected]);
 
@@ -139,8 +133,6 @@ export default function Home() {
       reconnectionAttempts: 3,
     });
 
-    socket.on("connect", () => setSocketState("LIVE"));
-    socket.on("connect_error", () => setSocketState("SIMULATED"));
     socket.on(
       "poolUpdated",
       (pool: {
@@ -200,11 +192,6 @@ export default function Home() {
     }
   }, [bets, settled]);
 
-  function enterMarket() {
-    if (!walletConnected) return;
-    setHasEntered(true);
-  }
-
   async function placeBet(side: Side) {
     if (!walletConnected || !walletAddress || !validStake || !acceptingBets)
       return;
@@ -248,76 +235,19 @@ export default function Home() {
     }
   }
 
-  function replaySimulation() {
-    settlementHandled.current = false;
-    setElapsed(0);
-    setPoolAmount(STARTING_POOL);
-    setBets([]);
-    setPayouts([]);
-    setUsdcBalance(walletConnected ? 1000 : 0);
-    setToast(null);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      void videoRef.current.play();
-    }
-  }
-
   if (!hasEntered) {
     return (
-      <main className="entryShell">
+      <main className="entryShell simpleLanding">
         <div className="entryGlow entryGlowOne" />
         <div className="entryGlow entryGlowTwo" />
-        <header className="entryHeader">
+        <section className="landingContent">
           <Brand />
-          <span className="demoBadge">LIVE SIMULATION</span>
-        </header>
-
-        <section className="entryHero">
-          <div className="livePill">
-            <i /> VAR MARKET OPEN
-          </div>
-          <p className="eyebrow">
-            ARGENTINA <span>VS</span> EGYPT
-          </p>
           <h1>
-            The ball is in.
-            <br />
-            The decision isn&apos;t.
+            Place a bet on whether a VAR will overturn the on-field decision
           </h1>
-          <p className="entryCopy">
-            Follow the real review video, live prediction signal, and automatic
-            settlement.
-          </p>
-        </section>
 
-        <div className="phoneNotification" role="alert">
-          <div className="notificationIcon">V</div>
-          <div className="notificationCopy">
-            <div className="notificationMeta">
-              <strong>VARBET</strong>
-              <span>now</span>
-            </div>
-            <h2>Goal under VAR review</h2>
-            <p>Egypt lead 0–2. Will the goal be overturned?</p>
-            <small>Argentina vs Egypt · 57:55</small>
-          </div>
-        </div>
-
-        <div className="entryWalletGate">
-          <div>
-            <strong>Connect a wallet to continue</strong>
-            <small>Wallets receive 1,000 demo USDC</small>
-          </div>
-          {demoWalletConnected ? (
-            <button
-              className="demoWalletConnected"
-              onClick={() => setDemoWalletConnected(false)}
-            >
-              Demo7…llet · 1,000 USDC
-            </button>
-          ) : connected ? (
-            <WalletConnectButton mounted={mounted} />
-          ) : (
+          <div className="landingWallet">
+            <span>CONNECT WALLET</span>
             <div className="walletChoices">
               <WalletConnectButton mounted={mounted} />
               <button
@@ -327,18 +257,28 @@ export default function Home() {
                 Use demo wallet
               </button>
             </div>
-          )}
-        </div>
+            <small>Includes 1,000 USDC for testing</small>
+          </div>
 
-        <button
-          className="entryCta"
-          disabled={!walletConnected}
-          onClick={enterMarket}
-        >
-          {walletConnected ? "Watch and bet" : "Connect wallet first"}{" "}
-          <span>›</span>
-        </button>
-        <p className="entryLegal">18+ · Play responsibly · Prototype market</p>
+          <div className="landingMatches">
+            <span>NEXT MATCHES</span>
+            <article>
+              <div>
+                <strong>France vs England</strong>
+                <small>World Cup · Tomorrow 15:00</small>
+              </div>
+              <b>›</b>
+            </article>
+            <article>
+              <div>
+                <strong>Spain vs Argentina</strong>
+                <small>World Cup · Tomorrow 19:30</small>
+              </div>
+              <b>›</b>
+            </article>
+          </div>
+        </section>
+        <p className="entryLegal">18+ · Play responsibly</p>
       </main>
     );
   }
@@ -358,9 +298,6 @@ export default function Home() {
       <header className="appHeader">
         <Brand />
         <div className="headerActions">
-          <span className={`connectionBadge ${socketState.toLowerCase()}`}>
-            <i /> {socketState}
-          </span>
           <span className="balancePill">
             {money.format(usdcBalance)} <small>USDC</small>
           </span>
@@ -380,7 +317,7 @@ export default function Home() {
       <section className="liveMarket">
         <div className="matchRow">
           <div>
-            <p>FIFA WORLD CUP · LIVE VAR REVIEW</p>
+            <p>FIFA WORLD CUP · LIVE</p>
             <h2>
               <span>ARG</span> {score} <span>EGY</span>
             </h2>
@@ -407,7 +344,7 @@ export default function Home() {
           />
           <div className="videoTopline">
             <span className="broadcastLive">
-              <i /> {isPlaying ? "LIVE SIM" : "PAUSED"}
+              <i /> {isPlaying ? "LIVE" : "PAUSED"}
             </span>
             <span>{matchClock}</span>
           </div>
@@ -416,40 +353,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={`statusCard ${settled ? "statusSettled" : ""}`}>
-          <div className="statusPulse">
-            <span>{settled ? "✓" : goalOccurred ? "VAR" : "LIVE"}</span>
-          </div>
-          <div>
-            <p>{reviewPhase.eyebrow}</p>
-            <h3>{reviewPhase.title}</h3>
-            <small>{reviewPhase.detail}</small>
-          </div>
-          <div className="closeTimer">
-            <strong>{secondsRemaining}s</strong>
-            <small>
-              {!goalOccurred
-                ? "to market"
-                : acceptingBets
-                  ? "to decision"
-                  : "closed"}
-            </small>
-          </div>
-        </div>
-
         <section className="signalCard" aria-label="Interpolated market signal">
           <div className="signalHeader">
             <div>
               <span>POLYMARKET SIGNAL</span>
-              <small>Event-aligned linear interpolation</small>
+              <small>Live match winner probabilities</small>
             </div>
-            <strong>
-              {!goalOccurred
-                ? "PRE-GOAL"
-                : acceptingBets
-                  ? "UPDATING"
-                  : "FINAL"}
-            </strong>
+            <strong>{settled ? "CLOSED" : "LIVE"}</strong>
           </div>
           <div className="signalBar">
             <span style={{ width: `${quote.argentina}%` }} />
@@ -466,163 +376,120 @@ export default function Home() {
           </div>
         </section>
 
-        <section className={`featuredPool ${settled ? "resolved" : ""}`}>
-          <div className="poolTopline">
-            <span>
-              {settled
-                ? "RESOLVED POOL"
-                : acceptingBets
-                  ? "ACTIVE POOL"
-                  : "MARKET ARMED"}
-            </span>
-            <strong>{money.format(poolAmount)} USDC</strong>
-          </div>
-          <h3>Will Egypt&apos;s goal stand?</h3>
-          <p>
-            Pool #{LIVE_POOL_ID} · Launched at 57:55 ·{" "}
-            {settled
-              ? "Overturned and paid"
-              : acceptingBets
-                ? "Accepting bets"
-                : "Opens when the goal occurs"}
-          </p>
-          <div className="poolStake">
-            <div className="poolStakeHeader">
-              <label htmlFor="pool-stake">Your stake</label>
-              <span>Available {money.format(usdcBalance)} USDC</span>
+        {goalOccurred && (
+          <section className={`featuredPool ${settled ? "resolved" : ""}`}>
+            <div className="poolTopline">
+              <span>{settled ? "RESOLVED POOL" : "ACTIVE POOL"}</span>
+              <strong>{money.format(poolAmount)} USDC</strong>
             </div>
-            <div className="stakeField">
-              <span>$</span>
-              <input
-                id="pool-stake"
-                value={stake}
-                onChange={(event) =>
-                  setStake(event.target.value.replace(/[^0-9.]/g, ""))
-                }
-                inputMode="decimal"
-                disabled={!walletConnected || settled}
-                aria-label="Bet stake"
-              />
-              <small>USDC</small>
-            </div>
-            <div className="stakeChips" aria-label="Quick stake amounts">
-              {[1, 10, 100].map((amount) => (
-                <button
-                  key={amount}
-                  className={stakeNumber === amount ? "active" : ""}
-                  disabled={!walletConnected || settled}
-                  onClick={() => setStake(String(amount))}
-                >
-                  ${amount}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="quickOdds">
-            <button
-              data-testid="goal-bet"
-              disabled={
-                !walletConnected || !acceptingBets || !validStake || submitting
-              }
-              onClick={() => placeBet("GOAL")}
-            >
-              <span>GOAL · CONFIRMED</span>
-              <strong>{submitting ? "···" : quote.goalOdds.toFixed(2)}</strong>
-              <small>
-                {validStake
-                  ? `${money.format(stakeNumber * quote.goalOdds)} return`
-                  : "Enter a valid stake"}
-              </small>
-            </button>
-            <button
-              data-testid="no-goal-bet"
-              disabled={
-                !walletConnected || !acceptingBets || !validStake || submitting
-              }
-              onClick={() => placeBet("NO_GOAL")}
-            >
-              <span>NO GOAL · OVERTURNED</span>
-              <strong>
-                {submitting ? "···" : quote.noGoalOdds.toFixed(2)}
-              </strong>
-              <small>
-                {validStake
-                  ? `${money.format(stakeNumber * quote.noGoalOdds)} return`
-                  : "Enter a valid stake"}
-              </small>
-            </button>
-          </div>
-          {!walletConnected && (
-            <p className="inlineWalletWarning">
-              Connect a wallet to enter this market.
+            <h3>Will Egypt&apos;s goal stand?</h3>
+            <p>
+              Pool #{LIVE_POOL_ID} · Launched at 57:55 ·{" "}
+              {settled ? "Overturned and paid" : "Accepting bets"}
             </p>
-          )}
-          {settled && (
-            <button className="replayButton" onClick={replaySimulation}>
-              Replay timed simulation
-            </button>
-          )}
-        </section>
+            <div className="poolStake">
+              <div className="poolStakeHeader">
+                <label htmlFor="pool-stake">Your stake</label>
+                <span>Available {money.format(usdcBalance)} USDC</span>
+              </div>
+              <div className="stakeField">
+                <span>$</span>
+                <input
+                  id="pool-stake"
+                  value={stake}
+                  onChange={(event) =>
+                    setStake(event.target.value.replace(/[^0-9.]/g, ""))
+                  }
+                  inputMode="decimal"
+                  disabled={!walletConnected || settled}
+                  aria-label="Bet stake"
+                />
+                <small>USDC</small>
+              </div>
+              <div className="stakeChips" aria-label="Quick stake amounts">
+                {[1, 10, 100].map((amount) => (
+                  <button
+                    key={amount}
+                    className={stakeNumber === amount ? "active" : ""}
+                    disabled={!walletConnected || settled}
+                    onClick={() => setStake(String(amount))}
+                  >
+                    ${amount}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="quickOdds">
+              <button
+                data-testid="goal-bet"
+                disabled={
+                  !walletConnected ||
+                  !acceptingBets ||
+                  !validStake ||
+                  submitting
+                }
+                onClick={() => placeBet("GOAL")}
+              >
+                <span>GOAL · CONFIRMED</span>
+                <strong>
+                  {submitting ? "···" : quote.goalOdds.toFixed(2)}
+                </strong>
+                <small>
+                  {validStake
+                    ? `${money.format(stakeNumber * quote.goalOdds)} return`
+                    : "Enter a valid stake"}
+                </small>
+              </button>
+              <button
+                data-testid="no-goal-bet"
+                disabled={
+                  !walletConnected ||
+                  !acceptingBets ||
+                  !validStake ||
+                  submitting
+                }
+                onClick={() => placeBet("NO_GOAL")}
+              >
+                <span>NO GOAL · OVERTURNED</span>
+                <strong>
+                  {submitting ? "···" : quote.noGoalOdds.toFixed(2)}
+                </strong>
+                <small>
+                  {validStake
+                    ? `${money.format(stakeNumber * quote.noGoalOdds)} return`
+                    : "Enter a valid stake"}
+                </small>
+              </button>
+            </div>
+          </section>
+        )}
       </section>
 
       <section className="contentSection">
         <div className="sectionHeading">
           <div>
-            <span>MARKETS</span>
-            <h2>Current and historical pools</h2>
+            <span>UPCOMING</span>
+            <h2>Next matches</h2>
           </div>
-          <span className="countBadge">3</span>
+          <span className="countBadge">2</span>
         </div>
 
         <div className="poolList">
-          {!settled && (
-            <button
-              className={`poolListCard ${acceptingBets ? "active" : ""}`}
-              disabled={!acceptingBets}
-              onClick={() =>
-                document
-                  .querySelector(".featuredPool")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              <span className={`poolState ${acceptingBets ? "" : "muted"}`}>
-                {acceptingBets ? "LIVE" : "SOON"}
-              </span>
-              <div>
-                <strong>Argentina vs Egypt</strong>
-                <small>
-                  {acceptingBets ? "Goal review" : "Waiting for goal"} ·{" "}
-                  {matchClock} · {money.format(poolAmount)}
-                </small>
-              </div>
-              <span>{acceptingBets ? "Open ›" : "Armed"}</span>
-            </button>
-          )}
-          {settled && (
-            <article className="poolListCard won">
-              <span className="poolState">PAID</span>
-              <div>
-                <strong>Argentina vs Egypt</strong>
-                <small>NO GOAL · Overturned · Pool #{LIVE_POOL_ID}</small>
-              </div>
-              <span>✓</span>
-            </article>
-          )}
           <article className="poolListCard">
-            <span className="poolState muted">PAID</span>
+            <span className="poolState muted">NEXT</span>
             <div>
-              <strong>Brazil vs France</strong>
-              <small>GOAL · Confirmed · $8,420.00</small>
+              <strong>France vs England</strong>
+              <small>World Cup · Tomorrow 15:00</small>
             </div>
-            <span>✓</span>
+            <span>›</span>
           </article>
           <article className="poolListCard">
-            <span className="poolState muted">PAID</span>
+            <span className="poolState muted">NEXT</span>
             <div>
-              <strong>Spain vs Japan</strong>
-              <small>NO GOAL · Overturned · $3,180.00</small>
+              <strong>Spain vs Argentina</strong>
+              <small>World Cup · Tomorrow 19:30</small>
             </div>
-            <span>✓</span>
+            <span>›</span>
           </article>
         </div>
       </section>
@@ -704,7 +571,7 @@ export default function Home() {
         <span>18+</span>
         <a href="#">Play responsibly</a>
         <a href="#">Terms</a>
-        <small>Prototype · USDC display values</small>
+        <small>Wallet balance shown in USDC</small>
       </footer>
     </main>
   );
