@@ -1,7 +1,8 @@
 # pnpm-workspace.yaml
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - "apps/*"
+  - "packages/*"
+  - "research/var-betting-engine/execution"
 
 allowBuilds:
   esbuild: set this to true or false
@@ -9,5 +10,5 @@ allowBuilds:
 
 # Allow these dependencies to run build scripts
 onlyBuiltDependencies:
-  - 'esbuild'
-  - 'unrs-resolver'
+  - "esbuild"
+  - "unrs-resolver"

@@ -17,17 +17,19 @@ The included adapters are in-memory demonstrations. Replace them before processi
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `engine.py` | Core pricing, risk, order state machine, settlement, and provider interfaces |
-| `run_demo.py` | Runs a complete local example without external payments or trades |
-| `config.example.json` | Commercial and risk-control inputs |
+| File                  | Purpose                                                                      |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `engine.ts`           | Core pricing, risk, order state machine, settlement, and provider interfaces |
+| `run-demo.ts`         | Runs a complete local example without external payments or trades            |
+| `config.example.json` | Commercial and risk-control inputs                                           |
+| `package.json`        | Workspace scripts and TypeScript dependencies                                |
+| `tsconfig.json`       | Strict TypeScript configuration                                              |
 
 ## Run the demo
 
 ```bash
-cd research/var-betting-engine/execution
-python3 run_demo.py
+pnpm install
+pnpm --filter @var-bets/execution-engine demo
 ```
 
 The demo creates three quotes, executes accepted orders, closes the market with `NO_GOAL`, pays the winning order, and prints the final book exposure.
@@ -64,17 +66,17 @@ sequenceDiagram
 
 ### Configuration inputs
 
-| Variable | Meaning | Current example |
-|---|---|---:|
-| `base_overround` | Base house margin added to implied probabilities | `0.07` |
-| `inventory_sensitivity` | How strongly odds respond to payout imbalance | `0.08` |
-| `minimum_decimal_odds` | Reject instead of offering odds below this value | `1.05` |
-| `maximum_decimal_odds` | Maximum payout multiple displayed | `20.0` |
-| `minimum_stake` | Smallest accepted stake | `$1` |
-| `maximum_stake` | Largest stake before dynamic risk checks | `$500` |
-| `maximum_unhedged_loss` | Hard book loss limit before hedge payoff | `$1,000` |
-| `quote_ttl_ms` | Time during which displayed odds remain executable | `500 ms` |
-| `require_hedge_fill` | Reject and refund when the hedge does not fill | `true` |
+| Variable                | Meaning                                            | Current example |
+| ----------------------- | -------------------------------------------------- | --------------: |
+| `base_overround`        | Base house margin added to implied probabilities   |          `0.07` |
+| `inventory_sensitivity` | How strongly odds respond to payout imbalance      |          `0.08` |
+| `minimum_decimal_odds`  | Reject instead of offering odds below this value   |          `1.05` |
+| `maximum_decimal_odds`  | Maximum payout multiple displayed                  |          `20.0` |
+| `minimum_stake`         | Smallest accepted stake                            |            `$1` |
+| `maximum_stake`         | Largest stake before dynamic risk checks           |          `$500` |
+| `maximum_unhedged_loss` | Hard book loss limit before hedge payoff           |        `$1,000` |
+| `quote_ttl_ms`          | Time during which displayed odds remain executable |        `500 ms` |
+| `require_hedge_fill`    | Reject and refund when the hedge does not fill     |          `true` |
 
 `maximum_unhedged_loss` is a loss cap, not a guaranteed profit. Set it to zero only when the hedge model and execution guarantees support that constraint. Early one-sided bets cannot offer decimal odds above `1.00` while simultaneously guaranteeing profit without outside liquidity or a hedge.
 
@@ -97,17 +99,19 @@ The engine adds:
 - quote expiry;
 - HMAC quote signature.
 
+All money fields inside the TypeScript engine use integer cents. Decimal odds and probabilities remain numbers, but stake, payout, liability, hedge payoff, and execution cost never use floating-point dollars.
+
 ### Market snapshot inputs
 
 `MarketSnapshot` requires:
 
-| Field | Source |
-|---|---|
-| `goal_probability` | Your signal service, not the raw match-winner probability |
-| `source_version` | Unique market-feed sequence number or timestamp |
-| `observed_at` | Timestamp from the pricing feed |
-| `betting_closes_at` | VAR market deadline maintained by the event service |
-| `is_open` | Event-service market state |
+| Field               | Source                                                    |
+| ------------------- | --------------------------------------------------------- |
+| `goal_probability`  | Your signal service, not the raw match-winner probability |
+| `source_version`    | Unique market-feed sequence number or timestamp           |
+| `observed_at`       | Timestamp from the pricing feed                           |
+| `betting_closes_at` | VAR market deadline maintained by the event service       |
+| `is_open`           | Event-service market state                                |
 
 ## Required data sources
 
@@ -177,7 +181,7 @@ decimal_odds = 1 / selected_q
 
 More Goal exposure therefore lowers Goal payouts and improves No-Goal pricing. The reverse occurs when No-Goal exposure dominates.
 
-Implementation: `BetExecutionEngine._inventory_adjusted_odds()`.
+Implementation: `BetExecutionEngine.inventoryAdjustedOdds()`.
 
 ### 2. Hard risk cap
 
@@ -198,7 +202,7 @@ offered_odds = min(market_odds, maximum_safe_odds, maximum_decimal_odds)
 
 If `offered_odds < minimum_decimal_odds`, the engine rejects the quote.
 
-Implementation: `BetExecutionEngine._risk_capped_odds()`.
+Implementation: `BetExecutionEngine.riskCappedOdds()`.
 
 ### 3. Worst-case book result
 
@@ -241,20 +245,20 @@ The original stake is included in decimal-odds payout.
 
 ## Engine sections
 
-| Function or class | Responsibility |
-|---|---|
-| `BetExecutionEngine.create_quote()` | Validate request, read book, calculate and sign dynamic quote |
-| `BetExecutionEngine.execute_quote()` | Idempotency, expiry, risk reservation, payment, hedge, capture |
-| `BetExecutionEngine.settle_market()` | Close once, determine winners, issue idempotent payouts |
-| `BookState` | Handle, liabilities, hedge payoff, and worst-case result |
-| `PaymentPort` | Payment-provider boundary |
-| `HedgePort` | Polymarket/Kalshi execution boundary |
-| `LedgerPort` | Durable transactional storage boundary |
-| `MarketDataPort` | Current calibrated Goal probability and market status |
+| Function or class                   | Responsibility                                                 |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `BetExecutionEngine.createQuote()`  | Validate request, read book, calculate and sign dynamic quote  |
+| `BetExecutionEngine.executeQuote()` | Idempotency, expiry, risk reservation, payment, hedge, capture |
+| `BetExecutionEngine.settleMarket()` | Close once, determine winners, issue idempotent payouts        |
+| `BookState`                         | Handle, liabilities, hedge payoff, and worst-case result       |
+| `PaymentPort`                       | Payment-provider boundary                                      |
+| `HedgePort`                         | Polymarket/Kalshi execution boundary                           |
+| `LedgerPort`                        | Durable transactional storage boundary                         |
+| `MarketDataPort`                    | Current calibrated Goal probability and market status          |
 
 ## Where to wire payments
 
-Implement `PaymentPort` in `engine.py` using your wallet or payment provider.
+Implement `PaymentPort` in `engine.ts` using your wallet or payment provider.
 
 ### `authorize()`
 
@@ -274,7 +278,7 @@ Called only after the required hedge succeeds. It converts the hold into a compl
 
 Called when the hedge fails or another execution stage fails. It releases the payment hold.
 
-### `credit_payout()`
+### `creditPayout()`
 
 Called during settlement for winning orders. The idempotency key is based on settlement event and order ID, preventing duplicate payouts.
 

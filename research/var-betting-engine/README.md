@@ -10,8 +10,7 @@ The execution engine does not import or depend on the simulation.
 ## Execution engine
 
 ```bash
-cd research/var-betting-engine/execution
-python3 run_demo.py
+pnpm --filter @var-bets/execution-engine demo
 ```
 
 See [`execution/README.md`](execution/README.md) for configuration, formulas, lifecycle, data sources, storage requirements, and the payment/hedge integration points.
