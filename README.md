@@ -1,5 +1,16 @@
 # Turborepo starter
 
+## VARBET mobile prototype
+
+The interactive mobile-first VAR betting UI lives in [`apps/web`](apps/web). It includes a market-open notification, simulated live odds, repeat bet placement with locked odds, feed-delay protection, and demo settlement controls.
+
+```sh
+pnpm install
+pnpm --filter web dev
+```
+
+Open `http://localhost:3000` and use the `•••` menu to simulate a goal/no-goal decision or a delayed price feed. This is a no-real-money product prototype; production payment, identity, market-data, geofencing, and regulatory integrations are intentionally not connected.
+
 ## VAR betting engine research
 
 The standalone Python order-execution engine and historical simulation are documented in [`research/var-betting-engine`](research/var-betting-engine/README.md).
