@@ -36,7 +36,7 @@ export class CronService {
   @Cron(CronExpression.EVERY_MINUTE)
   async handleFixturePoller() {
     this.logger.log('Running Fixture Poller...');
-    await this.fixturesService.syncFromMockService();
+    await this.fixturesService.syncFromTxLine();
   }
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -47,8 +47,15 @@ export class CronService {
     if (!fixture) return;
 
     try {
+      const txlineUrl = process.env.TXLINE_URL || 'http://localhost:4000';
       const response = await axios.get<TxLineEvent[]>(
-        `http://localhost:4000/api/scores/updates/${fixture.FixtureId}`,
+        `${txlineUrl}/api/scores/updates/${fixture.FixtureId}`,
+        {
+          headers: {
+            Authorization: process.env.TXLINE_AUTH_TOKEN || '',
+            'X-Api-Token': process.env.TXLINE_API_TOKEN || '',
+          },
+        },
       );
       const events = response.data;
 

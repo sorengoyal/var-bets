@@ -39,9 +39,15 @@ export class FixturesService {
     return this.fixtureRepo.delete(id);
   }
 
-  async syncFromMockService() {
+  async syncFromTxLine() {
     try {
-      const response = await axios.get('http://localhost:4000/api/fixtures');
+      const txlineUrl = process.env.TXLINE_URL || 'http://localhost:4000';
+      const response = await axios.get(`${txlineUrl}/api/fixtures`, {
+        headers: {
+          Authorization: process.env.TXLINE_AUTH_TOKEN || '',
+          'X-Api-Token': process.env.TXLINE_API_TOKEN || '',
+        },
+      });
       const remoteFixtures = response.data;
 
       for (const rawRemote of remoteFixtures) {
