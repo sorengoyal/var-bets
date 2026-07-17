@@ -1,9 +1,55 @@
 # VARBET Admin Web
 
-Operator dashboard for matches, VAR pools, dynamic pricing, liabilities, payouts, and automated Polymarket hedge activity.
+Operator dashboard for engine quotes, VAR pools, dynamic pricing, liabilities, settlement, and hedge activity.
+
+## Run with the replay simulator
+
+Run these in separate terminals:
 
 ```sh
+pnpm --filter admin-simulator start
 pnpm --filter admin-web dev
 ```
 
-The Argentina–Egypt dashboard uses scenario 10 from `research/var-betting-engine/simulation/sample-results/var_mc_goal_share_scenarios.csv`.
+Open `http://localhost:3003`. The dashboard polls the configured adapter once per second. Use **Restart replay** to reset the Argentina–Egypt incident.
+
+## Dashboard adapter
+
+`lib/dashboard-adapter.ts` is the frontend boundary. It contains:
+
+- `DashboardDataAdapter`: transport-independent interface;
+- `HttpDashboardDataAdapter`: current REST implementation;
+- `useDashboardData()`: one-second polling, connection state, and last-good-snapshot handling.
+
+Set the server-side adapter base URL in `.env.local`:
+
+```text
+ADMIN_DATA_URL=http://localhost:4010
+```
+
+The adapter must expose:
+
+```text
+GET /v1/admin/dashboard
+```
+
+and return `DashboardSnapshot` from `@var-bets/dashboard-contract`. The browser calls the same-origin Next.js routes under `/api`; those routes proxy to the configured operator service so its network location and credentials are never exposed to browser code. Simulation controls are optional in production; the replay service also exposes `POST /v1/simulation/reset`.
+
+## Production adapters to implement
+
+The real operator API should aggregate the execution engine's existing ports and return the shared dashboard contract:
+
+| Dashboard data                            | Production source                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| Current prices and calibrated Goal signal | `MarketDataPort` backed by the Polymarket CLOB feed plus signal service |
+| Accepted handle, payouts, and liabilities | `LedgerPort` backed by transactional database book state                |
+| Quote odds and acceptance/rejections      | persisted `Quote` and `BetOrder` records                                |
+| Hedge notional, price, status, and fees   | authenticated `HedgePort` venue adapter and hedge-order ledger          |
+| Wallet captures and payouts               | licensed `PaymentPort` plus payment transaction ledger                  |
+| Pool status and official outcome          | authoritative sports event feed and settlement event store              |
+
+Do not connect provider credentials from the browser. The frontend calls an authenticated operator API; that API owns the engine, secrets, venue adapters, database transactions, and audit log.
+
+## Model reference
+
+The risk percentiles use scenario 10 from `research/var-betting-engine/simulation/sample-results/var_mc_goal_share_scenarios.csv`. Live handle, odds, liabilities, hedge costs, and event P&L come from the adapter snapshot.

@@ -1,31 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import type { PricePoint } from "@var-bets/dashboard-contract";
+import { useDashboardData } from "../lib/dashboard-adapter";
 
 type Series = "ARG" | "EGY" | "ALL";
-
-const scenario = {
-  handle: 10024.4682,
-  meanProfit: 1321.6526,
-  medianProfit: 1273.8611,
-  p5Profit: 549.0775,
-  p1Profit: 251.179,
-  worstProfit: -429.8982,
-  lossProbability: 0.0028,
-  acceptanceRate: 0.8970457,
-  rejectedHandle: 1199.2693,
-  meanMaxLiability: 830.3019,
-  p99Liability: 1000,
-  goalOdds: 2.4206,
-  noGoalOdds: 1.7438,
-  bettorPayoutPerDollar: 0.8667944,
-};
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 2,
 });
+
+function signedMoney(value: number): string {
+  return `${value >= 0 ? "+" : ""}${money.format(value)}`;
+}
 
 function Brand() {
   return (
@@ -59,9 +48,37 @@ function Metric({
   );
 }
 
-function OddsChart({ series }: { series: Series }) {
+function linePoints(
+  history: PricePoint[],
+  probability: "argProbability" | "egyProbability",
+): string {
+  const maxSecond = Math.max(139, history.at(-1)?.second ?? 139);
+  return history
+    .map((point) => {
+      const x = 46 + (point.second / maxSecond) * 770;
+      const y = 270 - point[probability] * 2.35;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function areaPath(points: string): string {
+  if (!points) return "";
+  const coordinates = points.split(" ");
+  return `M${coordinates.join(" L")} L${coordinates.at(-1)?.split(",")[0]} 270 L46 270 Z`;
+}
+
+function OddsChart({
+  series,
+  history,
+}: {
+  series: Series;
+  history: PricePoint[];
+}) {
   const showArg = series === "ARG" || series === "ALL";
   const showEgy = series === "EGY" || series === "ALL";
+  const argPoints = linePoints(history, "argProbability");
+  const egyPoints = linePoints(history, "egyProbability");
 
   return (
     <div className="chartWrap">
@@ -72,76 +89,49 @@ function OddsChart({ series }: { series: Series }) {
       >
         <defs>
           <linearGradient id="argFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#55b7ff" stopOpacity=".28" />
-            <stop offset="1" stopColor="#55b7ff" stopOpacity="0" />
+            <stop offset="0" stopColor="#1677c8" stopOpacity=".22" />
+            <stop offset="1" stopColor="#1677c8" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="egyFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#ff6f7c" stopOpacity=".2" />
-            <stop offset="1" stopColor="#ff6f7c" stopOpacity="0" />
+            <stop offset="0" stopColor="#d84253" stopOpacity=".16" />
+            <stop offset="1" stopColor="#d84253" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[60, 120, 180, 240].map((y) => (
           <line key={y} x1="46" x2="816" y1={y} y2={y} className="gridLine" />
         ))}
-        <text x="8" y="64">
-          80%
-        </text>
-        <text x="8" y="124">
-          60%
-        </text>
-        <text x="8" y="184">
-          40%
-        </text>
-        <text x="8" y="244">
-          20%
-        </text>
-
-        {showArg && (
-          <path
-            d="M46 164 L305 229 L564 196 L816 138 L816 270 L46 270 Z"
-            fill="url(#argFill)"
-          />
-        )}
-        {showEgy && (
-          <path
-            d="M46 129 L305 55 L564 85 L816 141 L816 270 L46 270 Z"
-            fill="url(#egyFill)"
-          />
-        )}
-        {showArg && (
-          <polyline
-            points="46,164 305,229 564,196 816,138"
-            className="argLine"
-          />
-        )}
-        {showEgy && (
-          <polyline points="46,129 305,55 564,85 816,141" className="egyLine" />
-        )}
-
+        {[80, 60, 40, 20].map((value, index) => (
+          <text key={value} x="8" y={64 + index * 60}>
+            {value}%
+          </text>
+        ))}
+        {showArg && <path d={areaPath(argPoints)} fill="url(#argFill)" />}
+        {showEgy && <path d={areaPath(egyPoints)} fill="url(#egyFill)" />}
+        {showArg && <polyline points={argPoints} className="argLine" />}
+        {showEgy && <polyline points={egyPoints} className="egyLine" />}
         <line x1="46" x2="46" y1="35" y2="270" className="eventLine goal" />
         <line
-          x1="305"
-          x2="305"
+          x1="323"
+          x2="323"
           y1="35"
           y2="270"
           className="eventLine monitor"
         />
         <line
-          x1="564"
-          x2="564"
+          x1="655"
+          x2="655"
           y1="35"
           y2="270"
           className="eventLine decision"
         />
         <line x1="816" x2="816" y1="35" y2="270" className="currentLine" />
-
         <text x="46" y="289" textAnchor="middle">
           57:55
         </text>
-        <text x="305" y="289" textAnchor="middle">
+        <text x="323" y="289" textAnchor="middle">
           58:45
         </text>
-        <text x="564" y="289" textAnchor="middle">
+        <text x="655" y="289" textAnchor="middle">
           59:45
         </text>
         <text x="816" y="289" textAnchor="end">
@@ -169,16 +159,35 @@ function OddsChart({ series }: { series: Series }) {
 export default function AdminDashboard() {
   const [series, setSeries] = useState<Series>("ALL");
   const [poolExpanded, setPoolExpanded] = useState(true);
-  const payout = scenario.handle * scenario.bettorPayoutPerDollar;
+  const { connected, resetSimulation, snapshot } = useDashboardData();
+  const { fixture, market, model, pool } = snapshot;
+  const requestedBets = pool.acceptedBets + pool.rejectedBets;
+  const acceptanceRate = requestedBets
+    ? pool.acceptedBets / requestedBets
+    : pool.requestedHandle
+      ? pool.acceptedHandle / pool.requestedHandle
+      : 0;
+  const eventProfit =
+    pool.status === "SETTLED" ? pool.profitIfNoGoal : pool.worstCaseProfit;
+  const outcomeText = pool.outcome ?? "PENDING";
 
   return (
     <main>
       <header className="topbar">
         <Brand />
         <div className="topActions">
-          <span className="systemLive">
-            <i /> SYSTEM LIVE
+          <span className={`systemLive ${connected ? "" : "offline"}`}>
+            <i /> {connected ? "ADAPTER LIVE" : "ADAPTER OFFLINE"}
           </span>
+          <span className="modeBadge">{snapshot.mode}</span>
+          {snapshot.mode === "SIMULATION" && (
+            <button
+              className="resetButton"
+              onClick={() => void resetSimulation()}
+            >
+              Restart replay
+            </button>
+          )}
           <button className="operatorWallet">0x5825…8Fe1</button>
           <button className="iconButton" aria-label="Settings">
             ⚙
@@ -192,57 +201,68 @@ export default function AdminDashboard() {
             <span>OPERATIONS</span>
             <h1>Global market control</h1>
             <p>
-              Monitor pools, user flow, liabilities, and automated Polymarket
+              Monitor engine quotes, user flow, liabilities, and automated
               hedges.
             </p>
           </div>
           <div className="modelBadge">
-            <span>MODEL SCENARIO 10</span>
+            <span>MODEL SCENARIO {model.scenarioId}</span>
             <strong>50% Goal / 50% No Goal</strong>
-            <small>5,000 Monte Carlo paths</small>
+            <small>
+              {model.simulations.toLocaleString()} Monte Carlo paths ·{" "}
+              {snapshot.source}
+            </small>
           </div>
         </section>
 
         <section className="metrics">
           <Metric
-            label="MEAN HANDLE"
-            value={money.format(scenario.handle)}
-            note={`${(scenario.acceptanceRate * 100).toFixed(2)}% accepted`}
+            label="LIVE HANDLE"
+            value={money.format(pool.acceptedHandle)}
+            note={`${(acceptanceRate * 100).toFixed(2)}% accepted · ${pool.acceptedBets} bets`}
           />
           <Metric
-            label="MEAN PROFIT"
-            value={`+${money.format(scenario.meanProfit)}`}
-            note={`Median +${money.format(scenario.medianProfit)}`}
-            tone="positive"
+            label={pool.status === "SETTLED" ? "EVENT P&L" : "WORST-CASE P&L"}
+            value={signedMoney(eventProfit)}
+            note={`No Goal case ${signedMoney(pool.profitIfNoGoal)}`}
+            tone={eventProfit >= 0 ? "positive" : undefined}
           />
           <Metric
-            label="MAX LIABILITY"
-            value={money.format(scenario.meanMaxLiability)}
-            note={`P99 cap ${money.format(scenario.p99Liability)}`}
+            label="CURRENT LIABILITY"
+            value={money.format(
+              Math.max(pool.payoutIfGoal, pool.payoutIfNoGoal),
+            )}
+            note={`Model P99 cap ${money.format(model.p99Liability)}`}
             tone="warning"
           />
           <Metric
-            label="LOSS PROBABILITY"
-            value={`${(scenario.lossProbability * 100).toFixed(2)}%`}
-            note={`Worst ${money.format(scenario.worstProfit)}`}
+            label="MODEL LOSS PROBABILITY"
+            value={`${(model.lossProbability * 100).toFixed(2)}%`}
+            note={`Monte Carlo worst ${money.format(model.worstProfit)}`}
           />
         </section>
 
         <section className="matchCard">
           <div className="matchHeader">
             <div className="liveBadge">
-              <i /> LIVE
+              <i /> {pool.status === "OPEN" ? "LIVE" : "FINAL"}
             </div>
             <div className="matchIdentity">
-              <span>FIFA WORLD CUP</span>
+              <span>{fixture.competition}</span>
               <h2>
-                Argentina <b>0–1</b> Egypt
+                {fixture.homeTeam}{" "}
+                <b>
+                  {fixture.homeScore}–{fixture.awayScore}
+                </b>{" "}
+                {fixture.awayTeam}
               </h2>
-              <small>Second half · 60:14</small>
+              <small>Second half · {fixture.matchClock}</small>
             </div>
             <div className="matchTotals">
-              <span>1 settled pool</span>
-              <strong>{money.format(scenario.handle)} USDC</strong>
+              <span>
+                {pool.status === "OPEN" ? "1 active pool" : "1 settled pool"}
+              </span>
+              <strong>{money.format(pool.acceptedHandle)} USDC</strong>
               <small>Total accepted handle</small>
             </div>
           </div>
@@ -251,19 +271,19 @@ export default function AdminDashboard() {
             <div className="panelHeader">
               <div>
                 <span>POLYMARKET MARKET</span>
-                <h3>Argentina advances vs Egypt advances</h3>
+                <h3>{market.title}</h3>
                 <small>
-                  Historical event-aligned observations · raw source percentages
+                  Interpolated event-aligned observations · updates every second
                 </small>
               </div>
               <div className="currentOdds">
                 <span>
                   <i className="argDot" />
-                  ARG <strong>50.45%</strong>
+                  ARG <strong>{market.argProbability.toFixed(2)}%</strong>
                 </span>
                 <span>
                   <i className="egyDot" />
-                  EGY <strong>49.78%</strong>
+                  EGY <strong>{market.egyProbability.toFixed(2)}%</strong>
                 </span>
               </div>
             </div>
@@ -278,7 +298,7 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
-            <OddsChart series={series} />
+            <OddsChart series={series} history={market.history} />
           </section>
 
           <section className="poolCard">
@@ -287,15 +307,25 @@ export default function AdminDashboard() {
               onClick={() => setPoolExpanded((value) => !value)}
             >
               <div>
-                <span className="settledBadge">✓ SETTLED</span>
-                <h3>Pool #20260707 · Goal review</h3>
+                <span
+                  className={
+                    pool.status === "SETTLED" ? "settledBadge" : "openBadge"
+                  }
+                >
+                  {pool.status === "SETTLED" ? "✓ SETTLED" : "● ACCEPTING BETS"}
+                </span>
+                <h3>Pool #{pool.id} · Goal review</h3>
                 <small>
-                  Ball in net 57:55 · Decision 59:45 · Outcome: NO GOAL
+                  Ball in net 57:55 · Decision 59:45 · Outcome: {outcomeText}
                 </small>
               </div>
               <div className="poolResult">
-                <span>MEAN EVENT P&L</span>
-                <strong>+{money.format(scenario.meanProfit)}</strong>
+                <span>
+                  {pool.status === "SETTLED" ? "EVENT P&L" : "WORST-CASE P&L"}
+                </span>
+                <strong className={eventProfit >= 0 ? "wonText" : "lostText"}>
+                  {signedMoney(eventProfit)}
+                </strong>
                 <small>
                   {poolExpanded ? "Hide details ↑" : "Show details ↓"}
                 </small>
@@ -308,26 +338,49 @@ export default function AdminDashboard() {
                   <div className="tableHeader">
                     <span>MARKET</span>
                     <span>REQUEST MIX</span>
-                    <span>MEAN ODDS</span>
+                    <span>LIVE ODDS</span>
                     <span>RESULT</span>
                   </div>
                   <div>
                     <strong>Goal confirmed</strong>
-                    <span>50.0%</span>
-                    <span>{scenario.goalOdds.toFixed(2)}</span>
-                    <span className="lostText">Lost</span>
+                    <span>{(pool.goalRequestedShare * 100).toFixed(1)}%</span>
+                    <span>
+                      {pool.goalOdds ? pool.goalOdds.toFixed(2) : "—"}
+                    </span>
+                    <span
+                      className={
+                        pool.outcome === "GOAL" ? "wonText" : "lostText"
+                      }
+                    >
+                      {pool.outcome === null
+                        ? "Open"
+                        : pool.outcome === "GOAL"
+                          ? "Won ✓"
+                          : "Lost"}
+                    </span>
                   </div>
                   <div>
                     <strong>No Goal overturned</strong>
-                    <span>50.0%</span>
-                    <span>{scenario.noGoalOdds.toFixed(2)}</span>
-                    <span className="wonText">Won ✓</span>
+                    <span>{(pool.noGoalRequestedShare * 100).toFixed(1)}%</span>
+                    <span>
+                      {pool.noGoalOdds ? pool.noGoalOdds.toFixed(2) : "—"}
+                    </span>
+                    <span
+                      className={
+                        pool.outcome === "NO_GOAL" ? "wonText" : "lostText"
+                      }
+                    >
+                      {pool.outcome === null
+                        ? "Open"
+                        : pool.outcome === "NO_GOAL"
+                          ? "Won ✓"
+                          : "Lost"}
+                    </span>
                   </div>
                   <footer>
-                    <span>Blended bettor return</span>
+                    <span>Goal signal probability</span>
                     <strong>
-                      ${scenario.bettorPayoutPerDollar.toFixed(4)} per accepted
-                      $1
+                      {(market.goalSignalProbability * 100).toFixed(2)}%
                     </strong>
                   </footer>
                 </div>
@@ -339,27 +392,26 @@ export default function AdminDashboard() {
                         <span>BET FLOW</span>
                         <h4>Accepted vs rejected</h4>
                       </div>
-                      <strong>
-                        {(scenario.acceptanceRate * 100).toFixed(2)}%
-                      </strong>
+                      <strong>{(acceptanceRate * 100).toFixed(2)}%</strong>
                     </div>
                     <div className="flowBar">
-                      <span
-                        style={{ width: `${scenario.acceptanceRate * 100}%` }}
-                      />
+                      <span style={{ width: `${acceptanceRate * 100}%` }} />
                     </div>
                     <dl>
                       <div>
                         <dt>Accepted handle</dt>
-                        <dd>{money.format(scenario.handle)}</dd>
+                        <dd>{money.format(pool.acceptedHandle)}</dd>
                       </div>
                       <div>
                         <dt>Rejected handle</dt>
-                        <dd>{money.format(scenario.rejectedHandle)}</dd>
+                        <dd>{money.format(pool.rejectedHandle)}</dd>
                       </div>
                       <div>
                         <dt>Requested split</dt>
-                        <dd>50 / 50</dd>
+                        <dd>
+                          {(pool.goalRequestedShare * 100).toFixed(0)} /{" "}
+                          {(pool.noGoalRequestedShare * 100).toFixed(0)}
+                        </dd>
                       </div>
                     </dl>
                   </section>
@@ -370,41 +422,38 @@ export default function AdminDashboard() {
                         <span>AUTOMATED HEDGE</span>
                         <h4>Inventory protection</h4>
                       </div>
-                      <strong className="healthy">HEALTHY</strong>
+                      <strong className="healthy">
+                        {connected ? "HEALTHY" : "OFFLINE"}
+                      </strong>
                     </div>
                     <ul className="activityList">
-                      <li>
-                        <time>57:55</time>
-                        <div>
-                          <strong>Dynamic repricing started</strong>
-                          <small>
-                            Goal quote {scenario.goalOdds.toFixed(2)} · No Goal{" "}
-                            {scenario.noGoalOdds.toFixed(2)}
-                          </small>
-                        </div>
-                        <span>LIVE</span>
-                      </li>
-                      <li>
-                        <time>58:45</time>
-                        <div>
-                          <strong>Liability cap enforced</strong>
-                          <small>
-                            Mean exposure{" "}
-                            {money.format(scenario.meanMaxLiability)}
-                          </small>
-                        </div>
-                        <span>CAP</span>
-                      </li>
-                      <li>
-                        <time>59:45</time>
-                        <div>
-                          <strong>Pool closed and settled</strong>
-                          <small>
-                            NO GOAL · payout liability {money.format(payout)}
-                          </small>
-                        </div>
-                        <span>DONE</span>
-                      </li>
+                      {snapshot.recentHedges.slice(0, 3).map((hedge) => (
+                        <li key={hedge.id}>
+                          <time>{hedge.timeLabel}</time>
+                          <div>
+                            <strong>
+                              {hedge.side.replace("_", " ")} hedge filled
+                            </strong>
+                            <small>
+                              {money.format(hedge.notional)} at{" "}
+                              {(hedge.venuePrice * 100).toFixed(2)}%
+                            </small>
+                          </div>
+                          <span>{hedge.status}</span>
+                        </li>
+                      ))}
+                      {snapshot.recentHedges.length === 0 && (
+                        <li>
+                          <time>—</time>
+                          <div>
+                            <strong>Waiting for engine orders</strong>
+                            <small>
+                              Hedge activity appears after an accepted bet
+                            </small>
+                          </div>
+                          <span>IDLE</span>
+                        </li>
+                      )}
                     </ul>
                   </section>
                 </div>
@@ -412,19 +461,19 @@ export default function AdminDashboard() {
                 <section className="riskStrip">
                   <div>
                     <span>P5 PROFIT</span>
-                    <strong>+{money.format(scenario.p5Profit)}</strong>
+                    <strong>{signedMoney(model.p5Profit)}</strong>
                   </div>
                   <div>
                     <span>P1 PROFIT</span>
-                    <strong>+{money.format(scenario.p1Profit)}</strong>
+                    <strong>{signedMoney(model.p1Profit)}</strong>
                   </div>
                   <div>
-                    <span>P99 LIABILITY</span>
-                    <strong>{money.format(scenario.p99Liability)}</strong>
+                    <span>HEDGE COST</span>
+                    <strong>{money.format(pool.executionCost)}</strong>
                   </div>
                   <div>
                     <span>REJECTED HANDLE</span>
-                    <strong>{money.format(scenario.rejectedHandle)}</strong>
+                    <strong>{money.format(pool.rejectedHandle)}</strong>
                   </div>
                 </section>
               </div>
@@ -459,24 +508,24 @@ export default function AdminDashboard() {
           <section className="listPanel">
             <div className="listTitle">
               <div>
-                <span>MODEL HEALTH</span>
+                <span>ENGINE HEALTH</span>
                 <h3>Execution controls</h3>
               </div>
-              <b className="green">OK</b>
+              <b className="green">{connected ? "OK" : "!"}</b>
             </div>
             <article>
               <div>
                 <strong>Liability limiter</strong>
                 <small>Maximum unhedged loss</small>
               </div>
-              <span>{money.format(1000)}</span>
+              <span>{money.format(model.maximumUnhedgedLoss)}</span>
             </article>
             <article>
               <div>
                 <strong>Minimum quote</strong>
                 <small>Lowest permitted decimal odds</small>
               </div>
-              <span>1.05</span>
+              <span>{model.minimumDecimalOdds.toFixed(2)}</span>
             </article>
           </section>
         </div>

@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": "./engine.ts",
+  "types": "./engine.ts",
   "scripts": {
     "demo": "node run-demo.ts",
     "check-types": "tsc --noEmit",

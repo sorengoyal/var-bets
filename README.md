@@ -27,11 +27,14 @@ The API exposes REST endpoints under `/api`, Swagger under `/docs`, and Socket.I
 
 ## Admin dashboard
 
-The operator-facing dashboard is a separate Next.js app in [`apps/admin-web`](apps/admin-web). It visualizes the Argentina–Egypt Polymarket path, pool settlement, risk controls, and scenario 10 Monte Carlo outputs.
+The operator-facing dashboard is a separate Next.js app in [`apps/admin-web`](apps/admin-web). It consumes the shared admin adapter contract and visualizes execution-engine quotes, the Argentina–Egypt Polymarket path, pool settlement, risk controls, hedges, and scenario 10 Monte Carlo outputs.
 
 ```sh
+pnpm --filter admin-simulator start
 pnpm --filter admin-web dev
 ```
+
+The standalone replay service lives in [`apps/admin-simulator`](apps/admin-simulator). It interpolates the historical price path every second, generates random two-sided bets and stakes, executes them through the TypeScript engine, records simulated Polymarket hedges, and settles `NO_GOAL`. Production adapter requirements are documented in [`apps/admin-web/README.md`](apps/admin-web/README.md).
 
 ## VAR betting engine research
 
