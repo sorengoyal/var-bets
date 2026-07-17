@@ -1,5 +1,9 @@
 # Turborepo starter
 
+## VAR betting engine research
+
+The standalone Python order-execution engine and historical simulation are documented in [`research/var-betting-engine`](research/var-betting-engine/README.md).
+
 This Turborepo starter is maintained by the Turborepo core team.
 
 ## Using this example
