@@ -21,11 +21,16 @@ export class BetsService {
     return this.betRepo.findOne({ where: { id } });
   }
 
-  async placeBet(data: { poolId: number; wallet_address: string; amount: number; option: string }) {
+  async placeBet(data: {
+    pool_id: number;
+    wallet_address: string;
+    amount: number;
+    option: string;
+  }) {
     const bet = this.betRepo.create(data);
     const savedBet = await this.betRepo.save(bet);
-    
-    // In a real app, we'd update the pool amount here. 
+
+    // In a real app, we'd update the pool amount here.
     // This will be handled in the Payout/Pool service logic later.
     return savedBet;
   }

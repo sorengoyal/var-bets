@@ -9,6 +9,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Score, Pool, Bet } from '../../db/entities/entities';
 import axios from 'axios';
 
+interface TxLineEvent {
+  Ts: number;
+  Action: string;
+  Data: Record<string, unknown>;
+  FixtureId: number;
+}
+
 @Injectable()
 export class CronService {
   private readonly logger = new Logger(CronService.name);
@@ -40,12 +47,29 @@ export class CronService {
     if (!fixture) return;
 
     try {
-      const response = await axios.get(
+      const response = await axios.get<TxLineEvent[]>(
         `http://localhost:4000/api/scores/updates/${fixture.FixtureId}`,
       );
       const events = response.data;
 
       for (const event of events) {
+        const exists = await this.scoreRepo.findOne({
+          where: {
+            fixtureId: fixture.id,
+            Ts: event.Ts,
+            Action: event.Action,
+          },
+        });
+
+        if (exists) continue;
+
+        await this.scoreRepo.save({
+          fixtureId: fixture.id,
+          Ts: event.Ts,
+          Action: event.Action,
+          Data: event.Data,
+        });
+
         if (event.Action === 'var') {
           await this.handleVarStart(fixture.id, event.Data);
         } else if (event.Action === 'var_end') {
@@ -58,10 +82,12 @@ export class CronService {
         error,
       );
     }
-  
   }
 
-  private async handleVarStart(fixtureId: number, eventData: any) {
+  private async handleVarStart(
+    fixtureId: number,
+    _eventData: Record<string, unknown>,
+  ) {
     this.logger.log(`VAR Started for fixture ${fixtureId}. Creating pool...`);
     await this.poolsService.create({
       fixture_id: fixtureId,
@@ -71,7 +97,10 @@ export class CronService {
     });
   }
 
-  private async handleVarEnd(fixtureId: number, eventData: any) {
+  private async handleVarEnd(
+    fixtureId: number,
+    eventData: Record<string, unknown>,
+  ) {
     this.logger.log(
       `VAR Ended for fixture ${fixtureId}. Closing pool and calculating payouts...`,
     );
@@ -83,7 +112,7 @@ export class CronService {
 
     await this.poolsService.update(pool.id, { acceptingBets: false });
 
-    const outcome = eventData.Outcome;
+    const outcome = eventData.Outcome as string;
     const bets = await this.betRepo.find({ where: { pool_id: pool.id } });
 
     const winners = bets.filter((bet) => bet.option === outcome);

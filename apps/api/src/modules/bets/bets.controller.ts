@@ -1,6 +1,17 @@
-import { Controller, Get, Post, Body, Param, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { BetsService } from './bets.service';
+import { CreateBetDto } from './dto/create-bet.dto';
 
+@ApiTags('bets')
 @Controller('bets')
 export class BetsController {
   constructor(private readonly betsService: BetsService) {}
@@ -16,7 +27,7 @@ export class BetsController {
   }
 
   @Post()
-  async placeBet(@Body() data: any) {
+  async placeBet(@Body() data: CreateBetDto) {
     return this.betsService.placeBet(data);
   }
 

@@ -45,13 +45,15 @@ export class FixturesService {
       const remoteFixtures = response.data;
 
       for (const rawRemote of remoteFixtures) {
-        const { Ts, GameState, ...remote}  = {
+        const { Ts, GameState, ...remote } = {
           ...rawRemote,
           Timestamp: Number(rawRemote.Ts),
-        }
+        };
         // Use FixtureId (External) as lookup
-        let fixture = await this.fixtureRepo.findOne({ where: { FixtureId: remote.FixtureId } });
-        
+        let fixture = await this.fixtureRepo.findOne({
+          where: { FixtureId: remote.FixtureId },
+        });
+
         if (!fixture) {
           fixture = await this.create({
             Timestamp: remote.Timestamp,
@@ -72,9 +74,14 @@ export class FixturesService {
         }
 
         // Ensure metadata exists and is active
-        let meta = await this.metadataRepo.findOne({ where: { fixture_id: fixture.id } });
+        const meta = await this.metadataRepo.findOne({
+          where: { fixture_id: fixture.id },
+        });
         if (!meta) {
-          await this.metadataRepo.save({ fixture_id: fixture.id, active: true });
+          await this.metadataRepo.save({
+            fixture_id: fixture.id,
+            active: true,
+          });
         }
       }
       return { synced: true, count: remoteFixtures.length };
