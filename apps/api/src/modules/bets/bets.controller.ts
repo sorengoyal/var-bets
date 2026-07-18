@@ -28,7 +28,12 @@ export class BetsController {
 
   @Post()
   async placeBet(@Body() data: CreateBetDto) {
-    return this.betsService.placeBet(data);
+    return this.betsService.placeBet({
+      poolId: data.poolId,
+      wallet_address: data.wallet_address,
+      amount: data.amount,
+      option: data.option,
+    });
   }
 
   @Delete(':id')

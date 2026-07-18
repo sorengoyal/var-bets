@@ -4,7 +4,7 @@ import { Payout, Pool } from '../../db/entities/entities';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3002',
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
   },
 })
 export class EventsGateway {
