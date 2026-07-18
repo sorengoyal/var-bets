@@ -33,9 +33,8 @@ type SettlementSummary = {
   endingBalance: number;
 };
 
-const LIVE_POOL_ID = 20260707;
-const STARTING_POOL = 2840;
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -81,7 +80,9 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [poolAmount, setPoolAmount] = useState(STARTING_POOL);
+  const [poolAmount, setPoolAmount] = useState(0);
+  const [activePoolId, setActivePoolId] = useState<number | null>(null);
+  const [poolRevealStage, setPoolRevealStage] = useState<"hidden" | "loading" | "revealed">("hidden");
   const [bets, setBets] = useState<BetRecord[]>([]);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [demoWalletConnected, setDemoWalletConnected] = useState(false);
@@ -91,6 +92,7 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const [settlementSummary, setSettlementSummary] =
     useState<SettlementSummary | null>(null);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   const walletConnected = connected || demoWalletConnected;
   const walletAddress =
@@ -142,6 +144,10 @@ export default function Home() {
       reconnectionAttempts: 3,
     });
 
+    socket.on("connect", () => {
+      console.log("[consumer-web] WS connected:", socket.id);
+    });
+
     socket.on(
       "poolUpdated",
       (pool: {
@@ -150,7 +156,8 @@ export default function Home() {
         acceptingBets?: boolean;
       }) => {
         const nextAmount = Number(pool.amount);
-        if (pool.id === LIVE_POOL_ID && Number.isFinite(nextAmount)) {
+        if (pool.id != null && activePoolId != null && pool.id === activePoolId && Number.isFinite(nextAmount)) {
+          console.log("[consumer-web] WS poolUpdated:", pool);
           setPoolAmount(nextAmount);
         }
       },
@@ -158,7 +165,8 @@ export default function Home() {
     socket.on(
       "payoutExecuted",
       (payout: { id: number; poolId: number; amount: number }) => {
-        if (payout.poolId !== LIVE_POOL_ID) return;
+        console.log("[consumer-web] WS payoutExecuted:", payout);
+        if (activePoolId != null && payout.poolId !== activePoolId) return;
         setPayouts((current) => [
           {
             id: payout.id,
@@ -175,6 +183,53 @@ export default function Home() {
       socket.disconnect();
     };
   }, []);
+
+  // Poll backend for active pool
+  useEffect(() => {
+    if (!hasEntered || !API_URL) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/pools?filter=active`, {
+          headers: { "x-api-token": API_SECRET },
+        });
+        if (!res.ok) return;
+        const pools: Array<{ id: number; amount: number }> = await res.json();
+        if (pools.length > 0) {
+          const pool = pools[0]!;
+          setActivePoolId((prev) => prev ?? pool.id);
+          setPoolAmount((prev) => (prev === 0 ? Number(pool.amount) : prev));
+          console.log("[consumer-web] active pool:", pool);
+        }
+      } catch {
+        // backend not ready yet
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [hasEntered]);
+
+  // Auto-reset simulation when wallet connects and user enters the app
+  useEffect(() => {
+    if (!hasEntered || !API_URL) return;
+    console.log("[consumer-web] auto-reset check:", {
+      walletConnected,
+      API_URL,
+      hasSecret: !!API_SECRET,
+    });
+    if (!walletConnected) return;
+    console.log("[consumer-web] wallet connected, resetting simulation...");
+    fetch(`${API_URL}/api/simulate/reset`, {
+      method: "POST",
+      headers: { "x-api-token": API_SECRET },
+    })
+      .then((res) => {
+        console.log("[consumer-web] simulate/reset response:", res.status);
+      })
+      .catch((err) => {
+        console.error("[consumer-web] simulate/reset failed:", err);
+      });
+  }, [hasEntered, walletConnected]);
 
   useEffect(() => {
     if (!settled) {
@@ -208,7 +263,7 @@ export default function Home() {
       setPayouts((current) => [
         {
           id: Date.now(),
-          poolId: LIVE_POOL_ID,
+          poolId: activePoolId ?? 0,
           amount: winnings,
           status: "CONFIRMED",
         },
@@ -220,30 +275,56 @@ export default function Home() {
     }
   }, [bets, settled, usdcBalance]);
 
+  // Pool reveal: loading card → flash animation
+  useEffect(() => {
+    if (!goalOccurred) {
+      setPoolRevealStage("hidden");
+      return;
+    }
+    // Goal occurred — always show loading first, then reveal
+    setPoolRevealStage("loading");
+    const timer = setTimeout(() => setPoolRevealStage("revealed"), 500);
+    return () => clearTimeout(timer);
+  }, [goalOccurred]);
+
   async function placeBet(side: Side) {
-    if (!walletConnected || !walletAddress || !validStake || !acceptingBets)
+    if (!walletConnected || !walletAddress || !validStake || !acceptingBets || activePoolId == null)
       return;
     setSubmitting(true);
     const lockedOdds = side === "GOAL" ? quote.goalOdds : quote.noGoalOdds;
 
     try {
       if (API_URL) {
+        console.log("[consumer-web] POST /api/bets", {
+          poolId: activePoolId,
+          wallet_address: walletAddress,
+          amount: stakeNumber,
+          option: side,
+        });
         const response = await fetch(`${API_URL}/api/bets`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-token": API_SECRET,
+          },
           body: JSON.stringify({
-            poolId: LIVE_POOL_ID,
+            poolId: activePoolId,
             wallet_address: walletAddress,
             amount: stakeNumber,
             option: side,
           }),
         });
-        if (!response.ok) throw new Error("Bet request failed");
+        if (!response.ok) {
+          console.error("[consumer-web] bet request failed:", response.status);
+          throw new Error("Bet request failed");
+        }
+        const betResult = await response.json();
+        console.log("[consumer-web] bet response:", betResult);
       }
 
       const bet: BetRecord = {
         id: Date.now(),
-        poolId: LIVE_POOL_ID,
+        poolId: activePoolId,
         side,
         amount: stakeNumber,
         odds: lockedOdds,
@@ -300,7 +381,7 @@ export default function Home() {
           <span className="toastCheck">✓</span>
           <div>
             <strong>{toast}</strong>
-            <p>Pool #{LIVE_POOL_ID}</p>
+            <p>Pool #{activePoolId}</p>
           </div>
         </div>
       )}
@@ -308,6 +389,27 @@ export default function Home() {
       <header className="appHeader">
         <Brand />
         <div className="headerActions">
+          {API_URL && (
+            <button
+              className="simResetButton"
+              onClick={async () => {
+                try {
+                  console.log("[consumer-web] manual reset...");
+                  const res = await fetch(`${API_URL}/api/simulate/reset`, {
+                    method: "POST",
+                    headers: { "x-api-token": API_SECRET },
+                  });
+                  console.log("[consumer-web] manual reset response:", res.status);
+                  window.location.reload();
+                } catch (err) {
+                  console.error("[consumer-web] manual reset failed:", err);
+                }
+              }}
+              title="Reset simulation"
+            >
+              ↺
+            </button>
+          )}
           <span className="balancePill">
             {money.format(usdcBalance)} <small>USDC</small>
           </span>
@@ -386,15 +488,26 @@ export default function Home() {
           </div>
         </section>
 
-        {goalOccurred && (
-          <section className={`featuredPool ${settled ? "resolved" : ""}`}>
+        {goalOccurred && poolRevealStage === "loading" && (
+          <section className="featuredPool loading">
+            <div className="poolTopline">
+              <span>CONNECTING</span>
+            </div>
+            <h3>Syncing with pool...</h3>
+            <p>Waiting for the backend to confirm the betting pool.</p>
+            <div className="poolPulse" />
+          </section>
+        )}
+
+        {goalOccurred && poolRevealStage === "revealed" && activePoolId != null && (
+          <section className={`featuredPool poolFlash ${settled ? "resolved" : ""}`}>
             <div className="poolTopline">
               <span>{settled ? "RESOLVED POOL" : "ACTIVE POOL"}</span>
               <strong>{money.format(poolAmount)} USDC</strong>
             </div>
             <h3>Will Egypt&apos;s goal stand?</h3>
             <p>
-              Pool #{LIVE_POOL_ID} · Launched at 57:55 ·{" "}
+              Pool #{activePoolId} · Launched at 57:55 ·{" "}
               {settled ? "Overturned and paid" : "Accepting bets"}
             </p>
             <div className="poolStake">
@@ -476,32 +589,40 @@ export default function Home() {
       </section>
 
       <section className="contentSection">
-        <div className="sectionHeading">
+        <button
+          className="sectionHeading collapsibleHeading"
+          onClick={() => setUpcomingOpen((o) => !o)}
+          aria-expanded={upcomingOpen}
+        >
           <div>
             <span>UPCOMING</span>
             <h2>Next matches</h2>
           </div>
-          <span className="countBadge">2</span>
-        </div>
+          <span className={`countBadge ${upcomingOpen ? "open" : ""}`}>
+            {upcomingOpen ? "\u2212" : "2"}
+          </span>
+        </button>
 
-        <div className="poolList">
-          <article className="poolListCard">
-            <span className="poolState muted">NEXT</span>
-            <div>
-              <strong>France vs England</strong>
-              <small>World Cup · Tomorrow 15:00</small>
-            </div>
-            <span>›</span>
-          </article>
-          <article className="poolListCard">
-            <span className="poolState muted">NEXT</span>
-            <div>
-              <strong>Spain vs Argentina</strong>
-              <small>World Cup · Tomorrow 19:30</small>
-            </div>
-            <span>›</span>
-          </article>
-        </div>
+        {upcomingOpen && (
+          <div className="poolList">
+            <article className="poolListCard">
+              <span className="poolState muted">NEXT</span>
+              <div>
+                <strong>France vs England</strong>
+                <small>World Cup · Tomorrow 15:00</small>
+              </div>
+              <span>›</span>
+            </article>
+            <article className="poolListCard">
+              <span className="poolState muted">NEXT</span>
+              <div>
+                <strong>Spain vs Argentina</strong>
+                <small>World Cup · Tomorrow 19:30</small>
+              </div>
+              <span>›</span>
+            </article>
+          </div>
+        )}
       </section>
 
       <section className="contentSection dashboard">

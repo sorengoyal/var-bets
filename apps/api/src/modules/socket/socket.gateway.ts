@@ -1,15 +1,16 @@
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
 
-@WebSocketGateway({ path: '/socket' })
+@WebSocketGateway({
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  },
+})
 export class SocketGateway {
   @WebSocketServer()
-  server!: any;
+  server!: Server;
 
   broadcastSimulationReset(): void {
-    for (const client of this.server.clients) {
-      if (client.readyState === client.OPEN) {
-        client.send(JSON.stringify({ event: 'simulationReset', data: {} }));
-      }
-    }
+    this.server.emit('simulationReset', {});
   }
 }

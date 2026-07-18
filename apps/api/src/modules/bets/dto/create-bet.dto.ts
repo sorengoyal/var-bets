@@ -5,7 +5,7 @@ export class CreateBetDto {
   @ApiProperty({ description: 'Pool ID to bet on', example: 1 })
   @IsNumber()
   @IsPositive()
-  pool_id!: number;
+  poolId!: number;
 
   @ApiProperty({
     description: 'Bettor Solana wallet address',

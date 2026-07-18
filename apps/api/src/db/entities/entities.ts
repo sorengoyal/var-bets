@@ -84,6 +84,9 @@ export class Pool {
   acceptingBets!: boolean;
 
   @Column({ default: false })
+  confirmed!: boolean;
+
+  @Column({ default: false })
   paidOut!: boolean;
 
   @CreateDateColumn()
