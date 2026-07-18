@@ -196,7 +196,7 @@ export default function Home() {
         const pools: Array<{ id: number; amount: number }> = await res.json();
         if (pools.length > 0) {
           const pool = pools[0]!;
-          setActivePoolId((prev) => prev ?? pool.id);
+          setActivePoolId(pool.id);
           setPoolAmount((prev) => (prev === 0 ? Number(pool.amount) : prev));
           console.log("[consumer-web] active pool:", pool);
         }
