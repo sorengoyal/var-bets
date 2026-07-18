@@ -14,7 +14,7 @@ Each tick:
 
 Quotes target a `20%` theoretical gross margin, which requires a `25%` base overround. The two quoted implied probabilities therefore begin with a combined target of `125%`. Inventory pressure then moves each side, and the hard cap shortens or rejects quotes to preserve a minimum book profit of `20% × accepted handle − $1,000 startup risk buffer`.
 
-The replay hedges `15%` of each accepted order's uncovered payout liability. It buys the relevant Argentina or Egypt match token and records expected hedge P&L from the price move between entry and the event-specific exit price. Token purchase principal is recorded as notional and is not treated as an execution loss; only the simulated `0.6%` fees/slippage are charged as execution cost. A production adapter should hedge net book exposure rather than copy this demonstration ratio.
+The replay places hedge notional equal to `80%` of every accepted user stake. Because an incomplete hedge rejects the associated user order, total filled hedge notional tracks `80%` of accepted pool handle. It buys the relevant Argentina or Egypt match token and records expected hedge P&L from the price move between entry and the event-specific exit price. Token purchase principal is recorded as notional and is not treated as an execution loss; only the simulated `0.6%` fees/slippage are charged as execution cost. A production adapter should hedge net book exposure rather than copy this demonstration ratio.
 
 At settlement, the snapshot reports accepted user bet counts and stakes by side, filled Polymarket hedge-order counts and notional by side, gross winning-user payout, and realized event profit from the engine book.
 

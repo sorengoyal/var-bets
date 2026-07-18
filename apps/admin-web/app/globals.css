@@ -316,8 +316,14 @@ button:focus-visible {
   border-radius: 15px;
   background: var(--surface);
 }
+.marketWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(360px, 0.8fr);
+  gap: 12px;
+  align-items: start;
+}
 .oddsPanel {
-  padding: 17px;
+  padding: 15px;
 }
 .panelHeader {
   display: flex;
@@ -328,15 +334,16 @@ button:focus-visible {
 .panelHeader h3 {
   margin: 4px 0 2px;
   font-family: var(--display);
-  font-size: 17px;
+  font-size: 19px;
+  line-height: 1.15;
 }
 .panelHeader small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 10px;
 }
 .currentOdds {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  gap: 6px;
 }
 .currentOdds > span {
   display: flex;
@@ -347,10 +354,12 @@ button:focus-visible {
   border-radius: 9px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 .currentOdds strong {
   color: var(--text);
+  font-family: var(--display);
+  font-size: 14px;
 }
 .argDot,
 .egyDot {
@@ -375,7 +384,7 @@ button:focus-visible {
   border-radius: 8px;
   color: var(--muted);
   background: var(--surface-3);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
 }
 .seriesToggle button.active {
@@ -386,17 +395,389 @@ button:focus-visible {
 .chartWrap {
   position: relative;
 }
+.chartEventAnimation {
+  position: absolute;
+  z-index: 6;
+  top: 38px;
+  left: 50%;
+  display: grid;
+  width: 180px;
+  min-height: 132px;
+  padding: 12px;
+  place-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 40px rgba(20, 32, 51, 0.18);
+  backdrop-filter: blur(10px);
+  animation: chartEventCard 0.5s ease-out both;
+}
+.chartEventAnimation strong {
+  font-family: var(--display);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+.chartEventAnimation small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.goalImpactScene {
+  position: relative;
+  width: 132px;
+  height: 65px;
+}
+.animatedNet {
+  position: absolute;
+  top: 8px;
+  right: 3px;
+  width: 78px;
+  height: 54px;
+  transform-origin: right center;
+  border: 3px solid #68758a;
+  border-left-width: 5px;
+  border-radius: 4px 10px 10px 4px;
+  background-image:
+    linear-gradient(rgba(104, 117, 138, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(104, 117, 138, 0.25) 1px, transparent 1px);
+  background-size: 10px 10px;
+  animation: netBulge 1.8s 0.55s ease-out both;
+}
+.animatedFootball {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  left: 0;
+  font-size: 24px;
+  filter: drop-shadow(0 3px 4px rgba(20, 32, 51, 0.22));
+  animation: ballHitsNet 1.8s cubic-bezier(0.42, 0, 0.25, 1) both;
+}
+.varSignalAnimation {
+  border-color: rgba(169, 110, 0, 0.25);
+  background: rgba(255, 252, 238, 0.96);
+}
+.varReferee {
+  position: relative;
+  width: 90px;
+  height: 70px;
+}
+.varScreenSignal {
+  position: absolute;
+  top: 0;
+  left: 19px;
+  width: 52px;
+  height: 36px;
+  transform: scale(0.35);
+  border: 3px solid var(--amber);
+  border-radius: 5px;
+  opacity: 0;
+  animation: drawVarSquare 1.1s 0.55s ease-out forwards;
+}
+.refereeHead {
+  position: absolute;
+  top: 19px;
+  left: 37px;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #ca8d69;
+  border-radius: 50%;
+  background: #e3aa80;
+}
+.refereeBody {
+  position: absolute;
+  top: 35px;
+  left: 31px;
+  width: 29px;
+  height: 32px;
+  border-radius: 8px 8px 4px 4px;
+  background: #f4c430;
+  box-shadow: inset 0 -6px 0 #202b3c;
+}
+.refereeArm {
+  position: absolute;
+  z-index: 2;
+  top: 34px;
+  width: 28px;
+  height: 6px;
+  border-radius: 99px;
+  background: #f4c430;
+  transform-origin: center;
+}
+.leftArm {
+  left: 14px;
+  transform: rotate(-48deg);
+  animation: refereeSignalsLeft 0.8s ease-out both;
+}
+.rightArm {
+  right: 14px;
+  transform: rotate(48deg);
+  animation: refereeSignalsRight 0.8s ease-out both;
+}
+.refereeWhistle {
+  position: absolute;
+  z-index: 3;
+  top: 30px;
+  left: 53px;
+  width: 7px;
+  height: 5px;
+  border-radius: 50%;
+  background: #172033;
+  animation: whistlePulse 0.55s ease-in-out 2;
+}
+.finalDecisionAnimation {
+  overflow: hidden;
+}
+.goalDecisionAnimation {
+  color: var(--green);
+  border-color: rgba(7, 136, 92, 0.25);
+  background: rgba(239, 255, 248, 0.96);
+}
+.decisionGoalIcon {
+  display: grid;
+  width: 76px;
+  height: 54px;
+  place-items: center;
+  border: 4px solid var(--green);
+  border-bottom-width: 7px;
+  border-radius: 6px 6px 12px 12px;
+  background-image:
+    linear-gradient(rgba(7, 136, 92, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(7, 136, 92, 0.18) 1px, transparent 1px);
+  background-size: 9px 9px;
+  animation: goalDecisionPop 0.8s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.decisionGoalIcon span {
+  font-size: 25px;
+}
+.decisionConfetti {
+  position: absolute;
+  inset: 0;
+}
+.decisionConfetti i {
+  --x: 50%;
+  position: absolute;
+  top: -15px;
+  left: var(--x);
+  width: 7px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--green);
+  animation: confettiFall 1.8s ease-in infinite;
+}
+.decisionConfetti i:nth-child(2n) {
+  background: #f4c430;
+  animation-delay: 0.2s;
+}
+.decisionConfetti i:nth-child(3n) {
+  background: #1677c8;
+  animation-delay: 0.4s;
+}
+.decisionConfetti i:nth-child(1) {
+  --x: 7%;
+}
+.decisionConfetti i:nth-child(2) {
+  --x: 16%;
+}
+.decisionConfetti i:nth-child(3) {
+  --x: 25%;
+}
+.decisionConfetti i:nth-child(4) {
+  --x: 34%;
+}
+.decisionConfetti i:nth-child(5) {
+  --x: 43%;
+}
+.decisionConfetti i:nth-child(6) {
+  --x: 52%;
+}
+.decisionConfetti i:nth-child(7) {
+  --x: 61%;
+}
+.decisionConfetti i:nth-child(8) {
+  --x: 70%;
+}
+.decisionConfetti i:nth-child(9) {
+  --x: 79%;
+}
+.decisionConfetti i:nth-child(10) {
+  --x: 88%;
+}
+.decisionConfetti i:nth-child(11) {
+  --x: 95%;
+}
+.decisionConfetti i:nth-child(12) {
+  --x: 48%;
+  animation-delay: 0.7s;
+}
+.noGoalDecisionAnimation {
+  color: var(--red);
+  border-color: rgba(216, 66, 83, 0.3);
+  background: rgba(255, 243, 245, 0.97);
+  animation:
+    chartEventCard 0.45s ease-out both,
+    noGoalShake 0.55s 0.45s ease-in-out both;
+}
+.decisionCross {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  place-items: center;
+  border: 5px solid var(--red);
+  border-radius: 50%;
+  font-family: var(--display);
+  font-size: 50px;
+  font-weight: 700;
+  line-height: 1;
+  animation: decisionCrossPop 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes chartEventCard {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+@keyframes ballHitsNet {
+  0% {
+    transform: translate(0, 8px) rotate(0deg) scale(0.75);
+  }
+  55% {
+    transform: translate(66px, 0) rotate(420deg) scale(1.05);
+  }
+  72% {
+    transform: translate(78px, 2px) rotate(500deg) scale(0.92);
+  }
+  100% {
+    transform: translate(70px, 9px) rotate(540deg) scale(0.88);
+  }
+}
+@keyframes netBulge {
+  0%,
+  35% {
+    transform: perspective(80px) rotateY(0deg) scaleX(1);
+  }
+  58% {
+    transform: perspective(80px) rotateY(-12deg) scaleX(1.18);
+  }
+  78% {
+    transform: perspective(80px) rotateY(5deg) scaleX(0.96);
+  }
+  100% {
+    transform: perspective(80px) rotateY(0deg) scaleX(1);
+  }
+}
+@keyframes drawVarSquare {
+  0% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes refereeSignalsLeft {
+  from {
+    transform: translate(13px, 18px) rotate(18deg);
+  }
+  to {
+    transform: translate(0, 0) rotate(-48deg);
+  }
+}
+@keyframes refereeSignalsRight {
+  from {
+    transform: translate(-13px, 18px) rotate(-18deg);
+  }
+  to {
+    transform: translate(0, 0) rotate(48deg);
+  }
+}
+@keyframes whistlePulse {
+  50% {
+    transform: scale(1.65);
+    box-shadow: 0 0 0 5px rgba(23, 32, 51, 0.12);
+  }
+}
+@keyframes goalDecisionPop {
+  from {
+    opacity: 0;
+    transform: scale(0.35) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes confettiFall {
+  from {
+    transform: translateY(-15px) rotate(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(155px) rotate(540deg);
+    opacity: 0.25;
+  }
+}
+@keyframes decisionCrossPop {
+  from {
+    opacity: 0;
+    transform: scale(0.25) rotate(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes noGoalShake {
+  0%,
+  100% {
+    transform: translateX(-50%);
+  }
+  25% {
+    transform: translateX(calc(-50% - 6px));
+  }
+  75% {
+    transform: translateX(calc(-50% + 6px));
+  }
+}
 .chartWrap svg {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 260px;
+  min-height: 220px;
   overflow: visible;
 }
 .chartWrap svg text {
   fill: var(--muted);
   font-family: var(--body);
-  font-size: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.chartValueLabel rect {
+  stroke-width: 1;
+}
+.chartWrap svg .chartValueLabel text {
+  fill: #ffffff;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+}
+.argValueLabel rect {
+  fill: var(--blue);
+  stroke: #0b62a9;
+}
+.egyValueLabel rect {
+  fill: var(--red);
+  stroke: #b92d3d;
 }
 .gridLine {
   stroke: rgba(22, 34, 55, 0.1);
@@ -442,7 +823,8 @@ button:focus-visible {
   align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
+  font-weight: 600;
 }
 .chartAnnotations i {
   width: 7px;
@@ -457,8 +839,21 @@ button:focus-visible {
   background: var(--green);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .chartEventAnimation,
+  .animatedFootball,
+  .animatedNet,
+  .varScreenSignal,
+  .refereeArm,
+  .refereeWhistle,
+  .decisionGoalIcon,
+  .decisionConfetti i,
+  .decisionCross {
+    animation: none;
+  }
+}
+
 .poolCard {
-  margin-top: 10px;
   overflow: hidden;
 }
 .poolHeader {
@@ -466,20 +861,21 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 16px;
+  min-height: 126px;
+  padding: 20px;
   cursor: pointer;
   border: 0;
   background: transparent;
   text-align: left;
 }
 .poolHeader h3 {
-  margin: 7px 0 2px;
+  margin: 9px 0 4px;
   font-family: var(--display);
-  font-size: 18px;
+  font-size: 24px;
 }
 .poolHeader small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
 }
 .settledBadge {
   padding: 5px 7px;
@@ -507,18 +903,46 @@ button:focus-visible {
 .poolResult strong {
   color: var(--green);
   font-family: var(--display);
-  font-size: 21px;
+  font-size: 38px;
+  letter-spacing: -0.04em;
 }
 .poolResult strong.lostText {
   color: var(--red);
 }
 .poolResult small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 10px;
 }
 .poolBody {
-  padding: 0 16px 16px;
+  padding: 16px 20px 20px;
   border-top: 1px solid var(--line);
+}
+.poolStatRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.poolStatRow article {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.poolStatRow span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.poolStatRow strong {
+  font-family: var(--display);
+  font-size: 24px;
+}
+.poolStatRow small {
+  color: var(--muted);
+  font-size: 10px;
 }
 .marketTable {
   margin-top: 14px;
@@ -529,29 +953,36 @@ button:focus-visible {
 }
 .marketTable > div {
   display: grid;
-  grid-template-columns: 1.5fr repeat(3, 1fr);
+  grid-template-columns: 1.35fr 0.65fr 1fr 1fr 0.55fr;
   gap: 10px;
   align-items: center;
-  padding: 11px 13px;
+  padding: 15px;
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 13px;
+}
+.marketTable > div > strong:first-child {
+  font-size: 15px;
 }
 .marketTable .tableHeader {
   color: var(--muted);
   background: rgba(22, 34, 55, 0.03);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.07em;
 }
-.marketTable footer {
-  display: flex;
-  justify-content: space-between;
-  padding: 11px 13px;
+.liveOddsValue {
+  font-family: var(--display);
+  font-size: 21px;
+}
+.moneyCell {
+  display: grid;
+  gap: 2px;
+  font-weight: 700;
+}
+.moneyCell small {
   color: var(--muted);
   font-size: 9px;
-}
-.marketTable footer strong {
-  color: var(--text);
+  font-weight: 500;
 }
 .wonText {
   color: var(--green);
@@ -748,8 +1179,7 @@ button:focus-visible {
   justify-content: space-between;
   margin-bottom: 12px;
 }
-.settlementTitle span,
-.settlementGrid article > span {
+.settlementTitle span {
   color: var(--muted);
   font-size: 8px;
   font-weight: 800;
@@ -767,29 +1197,52 @@ button:focus-visible {
   background: rgba(67, 230, 164, 0.1);
   font-size: 8px;
 }
-.settlementGrid {
+.settlementCategories {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
-.settlementGrid article {
+.settlementCategories > section {
   display: grid;
-  gap: 5px;
-  padding: 12px;
+  gap: 13px;
+  padding: 17px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: 13px;
+  background: var(--surface-2);
 }
-.settlementGrid strong {
-  font-family: var(--display);
-  font-size: 17px;
+.settlementCategories > section > span {
+  color: var(--purple);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
 }
-.settlementGrid small {
+.settlementCategories dl {
+  display: grid;
+  gap: 13px;
+  margin: 0;
+}
+.settlementCategories dl div {
+  display: grid;
+  gap: 4px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+.settlementCategories dt {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 10px;
 }
-.settlementGrid .settlementMoney {
-  background: linear-gradient(145deg, var(--surface), var(--surface-2));
+.settlementCategories dd {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+}
+.settlementCategories .settlementSummaryCategory {
+  border-color: rgba(7, 136, 92, 0.2);
+  background: rgba(7, 136, 92, 0.055);
+}
+.settlementCategories .settlementSummaryCategory > span {
+  color: var(--green);
 }
 .riskNotice {
   margin: 12px 0 0;
@@ -874,8 +1327,12 @@ button:focus-visible {
     grid-template-columns: 1fr 1fr;
   }
   .detailGrid,
-  .lowerGrid {
+  .lowerGrid,
+  .marketWorkspace {
     grid-template-columns: 1fr;
+  }
+  .oddsPanel {
+    grid-row: 2;
   }
   .pageHeading {
     align-items: flex-start;
@@ -883,6 +1340,9 @@ button:focus-visible {
   }
   .modelBadge {
     width: 100%;
+  }
+  .settlementCategories {
+    grid-template-columns: 1fr;
   }
 }
 

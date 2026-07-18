@@ -9,6 +9,8 @@ import type {
 import { Side } from "@var-bets/execution-engine";
 import { clockLabel } from "./polymarket-path.ts";
 
+const HEDGE_NOTIONAL_RATIO = 0.8;
+
 export class SimulatedPolymarketHedge implements HedgePort {
   readonly activity: HedgeActivity[] = [];
   readonly totals = {
@@ -30,13 +32,11 @@ export class SimulatedPolymarketHedge implements HedgePort {
     const venuePrice = order.side === Side.GOAL ? this.egyPrice : this.argPrice;
     const expectedExitPrice = order.side === Side.GOAL ? 0.7557 : 0.5045;
     const expectedPriceMove = Math.max(expectedExitPrice - venuePrice, 0.02);
-    const uncoveredLiability = Math.max(
-      0,
-      order.potentialPayoutCents - order.stakeCents,
-    );
-    const expectedHedgeProfitCents = Math.round(uncoveredLiability * 0.15);
     const hedgeNotionalCents = Math.round(
-      (expectedHedgeProfitCents / expectedPriceMove) * venuePrice,
+      order.stakeCents * HEDGE_NOTIONAL_RATIO,
+    );
+    const expectedHedgeProfitCents = Math.round(
+      (hedgeNotionalCents / venuePrice) * expectedPriceMove,
     );
     const executionCostCents = Math.round(hedgeNotionalCents * 0.006);
 

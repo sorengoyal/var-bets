@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   DashboardSnapshot,
   PricePoint,
+  ReviewOutcome,
 } from "@var-bets/dashboard-contract";
 import { useDashboardData } from "../lib/dashboard-adapter";
 
@@ -32,26 +33,6 @@ function Brand() {
   );
 }
 
-function Metric({
-  label,
-  value,
-  note,
-  tone,
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: "positive" | "warning";
-}) {
-  return (
-    <article className={`metric ${tone ?? ""}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{note}</small>
-    </article>
-  );
-}
-
 function linePoints(
   history: PricePoint[],
   probability: "argProbability" | "egyProbability",
@@ -75,14 +56,29 @@ function areaPath(points: string): string {
 function OddsChart({
   series,
   history,
+  outcome,
 }: {
   series: Series;
   history: PricePoint[];
+  outcome: ReviewOutcome;
 }) {
   const showArg = series === "ARG" || series === "ALL";
   const showEgy = series === "EGY" || series === "ALL";
   const argPoints = linePoints(history, "argProbability");
   const egyPoints = linePoints(history, "egyProbability");
+  const latest = history.at(-1);
+  const maxSecond = Math.max(139, latest?.second ?? 139);
+  const latestX = latest ? 46 + (latest.second / maxSecond) * 770 : 46;
+  const labelsOverlap = latest
+    ? Math.abs(latest.argProbability - latest.egyProbability) < 12
+    : false;
+  const argY = latest ? 270 - latest.argProbability * 2.35 : 270;
+  const egyY = latest ? 270 - latest.egyProbability * 2.35 : 270;
+  const labelX = Math.min(latestX + 9, 741);
+  const currentSecond = latest?.second ?? 0;
+  const showGoalAnimation = currentSecond <= 12;
+  const showVarAnimation = currentSecond >= 50 && currentSecond < 64;
+  const showDecisionAnimation = currentSecond >= 110 && outcome !== null;
 
   return (
     <div className="chartWrap">
@@ -113,6 +109,28 @@ function OddsChart({
         {showEgy && <path d={areaPath(egyPoints)} fill="url(#egyFill)" />}
         {showArg && <polyline points={argPoints} className="argLine" />}
         {showEgy && <polyline points={egyPoints} className="egyLine" />}
+        {latest && showArg && (
+          <g
+            className="chartValueLabel argValueLabel"
+            transform={`translate(${labelX} ${argY - (labelsOverlap ? 20 : 0)})`}
+          >
+            <rect width="76" height="24" rx="7" y="-12" />
+            <text x="38" y="4" textAnchor="middle">
+              ARG {latest.argProbability.toFixed(1)}%
+            </text>
+          </g>
+        )}
+        {latest && showEgy && (
+          <g
+            className="chartValueLabel egyValueLabel"
+            transform={`translate(${labelX} ${egyY + (labelsOverlap ? 20 : 0)})`}
+          >
+            <rect width="76" height="24" rx="7" y="-12" />
+            <text x="38" y="4" textAnchor="middle">
+              EGY {latest.egyProbability.toFixed(1)}%
+            </text>
+          </g>
+        )}
         <line x1="46" x2="46" y1="35" y2="270" className="eventLine goal" />
         <line
           x1="323"
@@ -142,6 +160,53 @@ function OddsChart({
           60:14
         </text>
       </svg>
+      {showGoalAnimation && (
+        <div className="chartEventAnimation goalScoredAnimation">
+          <div className="goalImpactScene" aria-hidden="true">
+            <span className="animatedFootball">⚽</span>
+            <span className="animatedNet" />
+          </div>
+          <strong>GOAL SCORED</strong>
+          <small>Ball hits the net</small>
+        </div>
+      )}
+      {showVarAnimation && (
+        <div className="chartEventAnimation varSignalAnimation">
+          <div className="varReferee" aria-hidden="true">
+            <span className="varScreenSignal" />
+            <span className="refereeHead" />
+            <span className="refereeBody" />
+            <span className="refereeArm leftArm" />
+            <span className="refereeArm rightArm" />
+            <span className="refereeWhistle" />
+          </div>
+          <strong>VAR CHECK</strong>
+          <small>Referee signals a review</small>
+        </div>
+      )}
+      {showDecisionAnimation && outcome === "GOAL" && (
+        <div className="chartEventAnimation finalDecisionAnimation goalDecisionAnimation">
+          <div className="decisionConfetti" aria-hidden="true">
+            {Array.from({ length: 12 }, (_, index) => (
+              <i key={index} />
+            ))}
+          </div>
+          <div className="decisionGoalIcon" aria-hidden="true">
+            <span>⚽</span>
+          </div>
+          <strong>GOAL</strong>
+          <small>Final decision</small>
+        </div>
+      )}
+      {showDecisionAnimation && outcome === "NO_GOAL" && (
+        <div className="chartEventAnimation finalDecisionAnimation noGoalDecisionAnimation">
+          <span className="decisionCross" aria-hidden="true">
+            ×
+          </span>
+          <strong>NO GOAL</strong>
+          <small>Final decision</small>
+        </div>
+      )}
       <div className="chartAnnotations">
         <span>
           <i className="goalDot" />
@@ -164,6 +229,16 @@ function SettlementSummary({ snapshot }: { snapshot: DashboardSnapshot }) {
   const requiredBookProfit =
     snapshot.pool.acceptedHandle * snapshot.model.minimumBookMargin -
     snapshot.model.maximumUnhedgedLoss;
+  const totalHedged =
+    snapshot.settlement.polymarketGoalHedges.amount +
+    snapshot.settlement.polymarketNoGoalHedges.amount;
+  const totalHedgeOrders =
+    snapshot.settlement.polymarketGoalHedges.count +
+    snapshot.settlement.polymarketNoGoalHedges.count;
+  const realizedHedgeGain =
+    snapshot.pool.outcome === "GOAL"
+      ? snapshot.pool.hedgePayoffIfGoal
+      : snapshot.pool.hedgePayoffIfNoGoal;
 
   return (
     <>
@@ -174,63 +249,70 @@ function SettlementSummary({ snapshot }: { snapshot: DashboardSnapshot }) {
         </div>
         <b>NO GOAL</b>
       </div>
-      <div className="settlementGrid">
-        <article>
-          <span>USER BETS · GOAL</span>
-          <strong>
-            {snapshot.settlement.userGoalBets.count.toLocaleString()} bets
-          </strong>
-          <small>
-            {money.format(snapshot.settlement.userGoalBets.amount)} accepted
-          </small>
-        </article>
-        <article>
-          <span>USER BETS · NO GOAL</span>
-          <strong>
-            {snapshot.settlement.userNoGoalBets.count.toLocaleString()} bets
-          </strong>
-          <small>
-            {money.format(snapshot.settlement.userNoGoalBets.amount)} accepted
-          </small>
-        </article>
-        <article>
-          <span>POLYMARKET HEDGES · GOAL</span>
-          <strong>
-            {snapshot.settlement.polymarketGoalHedges.count.toLocaleString()}{" "}
-            orders
-          </strong>
-          <small>
-            {money.format(snapshot.settlement.polymarketGoalHedges.amount)}{" "}
-            notional
-          </small>
-        </article>
-        <article>
-          <span>POLYMARKET HEDGES · NO GOAL</span>
-          <strong>
-            {snapshot.settlement.polymarketNoGoalHedges.count.toLocaleString()}{" "}
-            orders
-          </strong>
-          <small>
-            {money.format(snapshot.settlement.polymarketNoGoalHedges.amount)}{" "}
-            notional
-          </small>
-        </article>
-        <article className="settlementMoney">
-          <span>TOTAL PAYOUT</span>
-          <strong>{money.format(snapshot.settlement.totalPayout)}</strong>
-          <small>Gross winning-user payout</small>
-        </article>
-        <article className="settlementMoney">
-          <span>TOTAL PROFIT</span>
-          <strong
-            className={
-              snapshot.settlement.totalProfit >= 0 ? "wonText" : "lostText"
-            }
-          >
-            {signedMoney(snapshot.settlement.totalProfit)}
-          </strong>
-          <small>After hedge payoff and execution cost</small>
-        </article>
+      <div className="settlementCategories">
+        <section>
+          <span>BETS</span>
+          <dl>
+            <div>
+              <dt>Total pool size</dt>
+              <dd>{money.format(snapshot.pool.acceptedHandle)}</dd>
+            </div>
+            <div>
+              <dt>Goal bets</dt>
+              <dd>{money.format(snapshot.settlement.userGoalBets.amount)}</dd>
+            </div>
+            <div>
+              <dt>No Goal bets</dt>
+              <dd>{money.format(snapshot.settlement.userNoGoalBets.amount)}</dd>
+            </div>
+          </dl>
+        </section>
+        <section>
+          <span>HEDGE</span>
+          <dl>
+            <div>
+              <dt>Total amount hedged</dt>
+              <dd>{money.format(totalHedged)}</dd>
+            </div>
+            <div>
+              <dt>Hedge orders</dt>
+              <dd>{totalHedgeOrders.toLocaleString()}</dd>
+            </div>
+            <div>
+              <dt>Hedge gains</dt>
+              <dd className={realizedHedgeGain >= 0 ? "wonText" : "lostText"}>
+                {signedMoney(realizedHedgeGain)}
+              </dd>
+            </div>
+          </dl>
+        </section>
+        <section className="settlementSummaryCategory">
+          <span>SUMMARY</span>
+          <dl>
+            <div>
+              <dt>Total payout</dt>
+              <dd className="lostText">
+                {money.format(-Math.abs(snapshot.settlement.totalPayout))}
+              </dd>
+            </div>
+            <div>
+              <dt>Total fees</dt>
+              <dd className="lostText">
+                {money.format(-Math.abs(snapshot.pool.executionCost))}
+              </dd>
+            </div>
+            <div>
+              <dt>Total profit</dt>
+              <dd
+                className={
+                  snapshot.settlement.totalProfit >= 0 ? "wonText" : "lostText"
+                }
+              >
+                {signedMoney(snapshot.settlement.totalProfit)}
+              </dd>
+            </div>
+          </dl>
+        </section>
       </div>
       <p
         className={
@@ -326,42 +408,6 @@ export default function AdminDashboard() {
               hedges.
             </p>
           </div>
-          <div className="modelBadge">
-            <span>MODEL SCENARIO {model.scenarioId}</span>
-            <strong>50% Goal / 50% No Goal</strong>
-            <small>
-              {model.simulations.toLocaleString()} Monte Carlo paths ·{" "}
-              {(model.runMode ?? "REPEAT").toLowerCase()} seed{" "}
-              {(model.runSeed ?? 20260707).toLocaleString()}
-            </small>
-          </div>
-        </section>
-
-        <section className="metrics">
-          <Metric
-            label="LIVE HANDLE"
-            value={money.format(pool.acceptedHandle)}
-            note={`${(acceptanceRate * 100).toFixed(2)}% accepted · ${pool.acceptedBets} bets`}
-          />
-          <Metric
-            label={pool.status === "SETTLED" ? "EVENT P&L" : "WORST-CASE P&L"}
-            value={signedMoney(eventProfit)}
-            note={`No Goal case ${signedMoney(pool.profitIfNoGoal)}`}
-            tone={eventProfit >= 0 ? "positive" : undefined}
-          />
-          <Metric
-            label="CURRENT LIABILITY"
-            value={money.format(
-              Math.max(pool.payoutIfGoal, pool.payoutIfNoGoal),
-            )}
-            note={`Startup risk buffer ${money.format(model.maximumUnhedgedLoss)}`}
-            tone="warning"
-          />
-          <Metric
-            label="MODEL LOSS PROBABILITY"
-            value={`${(model.lossProbability * 100).toFixed(2)}%`}
-            note={`Monte Carlo worst ${money.format(model.worstProfit)}`}
-          />
         </section>
 
         <section className="matchCard">
@@ -389,227 +435,187 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <section className="panel oddsPanel">
-            <div className="panelHeader">
-              <div>
-                <span>POLYMARKET MARKET</span>
-                <h3>{market.title}</h3>
-                <small>
-                  Interpolated event-aligned observations · updates every second
-                </small>
-              </div>
-              <div className="currentOdds">
-                <span>
-                  <i className="argDot" />
-                  ARG <strong>{market.argProbability.toFixed(2)}%</strong>
-                </span>
-                <span>
-                  <i className="egyDot" />
-                  EGY <strong>{market.egyProbability.toFixed(2)}%</strong>
-                </span>
-              </div>
-            </div>
-            <div className="seriesToggle">
-              {(["ALL", "ARG", "EGY"] as Series[]).map((item) => (
-                <button
-                  key={item}
-                  className={series === item ? "active" : ""}
-                  onClick={() => setSeries(item)}
-                >
-                  {item === "ALL" ? "Both" : item}
-                </button>
-              ))}
-            </div>
-            <OddsChart series={series} history={market.history} />
-          </section>
-
-          <section className="poolCard">
-            <button
-              className="poolHeader"
-              onClick={() => setPoolExpanded((value) => !value)}
-            >
-              <div>
-                <span
-                  className={
-                    pool.status === "SETTLED" ? "settledBadge" : "openBadge"
-                  }
-                >
-                  {pool.status === "SETTLED" ? "✓ SETTLED" : "● ACCEPTING BETS"}
-                </span>
-                <h3>Pool #{pool.id} · Goal review</h3>
-                <small>
-                  Ball in net 57:55 · Decision 59:45 · Outcome: {outcomeText}
-                </small>
-              </div>
-              <div className="poolResult">
-                <span>
-                  {pool.status === "SETTLED" ? "EVENT P&L" : "WORST-CASE P&L"}
-                </span>
-                <strong className={eventProfit >= 0 ? "wonText" : "lostText"}>
-                  {signedMoney(eventProfit)}
-                </strong>
-                <small>
-                  {poolExpanded ? "Hide details ↑" : "Show details ↓"}
-                </small>
-              </div>
-            </button>
-
-            {poolExpanded && (
-              <div className="poolBody">
-                <div className="marketTable">
-                  <div className="tableHeader">
-                    <span>MARKET</span>
-                    <span>REQUEST MIX</span>
-                    <span>LIVE ODDS</span>
-                    <span>RESULT</span>
-                  </div>
-                  <div>
-                    <strong>Goal confirmed</strong>
-                    <span>{(pool.goalRequestedShare * 100).toFixed(1)}%</span>
-                    <span>
-                      {pool.goalOdds ? pool.goalOdds.toFixed(2) : "—"}
-                    </span>
-                    <span
-                      className={
-                        pool.outcome === "GOAL" ? "wonText" : "lostText"
-                      }
-                    >
-                      {pool.outcome === null
-                        ? "Open"
-                        : pool.outcome === "GOAL"
-                          ? "Won ✓"
-                          : "Lost"}
-                    </span>
-                  </div>
-                  <div>
-                    <strong>No Goal overturned</strong>
-                    <span>{(pool.noGoalRequestedShare * 100).toFixed(1)}%</span>
-                    <span>
-                      {pool.noGoalOdds ? pool.noGoalOdds.toFixed(2) : "—"}
-                    </span>
-                    <span
-                      className={
-                        pool.outcome === "NO_GOAL" ? "wonText" : "lostText"
-                      }
-                    >
-                      {pool.outcome === null
-                        ? "Open"
-                        : pool.outcome === "NO_GOAL"
-                          ? "Won ✓"
-                          : "Lost"}
-                    </span>
-                  </div>
-                  <footer>
-                    <span>Goal signal probability</span>
-                    <strong>
-                      {(market.goalSignalProbability * 100).toFixed(2)}%
-                    </strong>
-                  </footer>
-                </div>
-
-                <div className="detailGrid">
-                  <section className="activityPanel">
-                    <div className="subHeader">
-                      <div>
-                        <span>BET FLOW</span>
-                        <h4>Accepted vs rejected</h4>
-                      </div>
-                      <strong>{(acceptanceRate * 100).toFixed(2)}%</strong>
-                    </div>
-                    <div className="flowBar">
-                      <span style={{ width: `${acceptanceRate * 100}%` }} />
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>Accepted handle</dt>
-                        <dd>{money.format(pool.acceptedHandle)}</dd>
-                      </div>
-                      <div>
-                        <dt>Rejected handle</dt>
-                        <dd>{money.format(pool.rejectedHandle)}</dd>
-                      </div>
-                      <div>
-                        <dt>Requested split</dt>
-                        <dd>
-                          {(pool.goalRequestedShare * 100).toFixed(0)} /{" "}
-                          {(pool.noGoalRequestedShare * 100).toFixed(0)}
-                        </dd>
-                      </div>
-                    </dl>
-                  </section>
-
-                  <section className="activityPanel">
-                    <div className="subHeader">
-                      <div>
-                        <span>AUTOMATED HEDGE</span>
-                        <h4>Inventory protection</h4>
-                      </div>
-                      <strong className="healthy">
-                        {connected ? "HEALTHY" : "OFFLINE"}
-                      </strong>
-                    </div>
-                    <ul className="activityList">
-                      {snapshot.recentHedges.slice(0, 3).map((hedge) => (
-                        <li key={hedge.id}>
-                          <time>{hedge.timeLabel}</time>
-                          <div>
-                            <strong>
-                              {hedge.side.replace("_", " ")} hedge filled
-                            </strong>
-                            <small>
-                              {money.format(hedge.notional)} at{" "}
-                              {(hedge.venuePrice * 100).toFixed(2)}%
-                            </small>
-                          </div>
-                          <span>{hedge.status}</span>
-                        </li>
-                      ))}
-                      {snapshot.recentHedges.length === 0 && (
-                        <li>
-                          <time>—</time>
-                          <div>
-                            <strong>Waiting for engine orders</strong>
-                            <small>
-                              Hedge activity appears after an accepted bet
-                            </small>
-                          </div>
-                          <span>IDLE</span>
-                        </li>
-                      )}
-                    </ul>
-                  </section>
-                </div>
-
-                <section className="riskStrip">
-                  <div>
-                    <span>P5 PROFIT</span>
-                    <strong>{signedMoney(model.p5Profit)}</strong>
-                  </div>
-                  <div>
-                    <span>P1 PROFIT</span>
-                    <strong>{signedMoney(model.p1Profit)}</strong>
-                  </div>
-                  <div>
-                    <span>HEDGE COST</span>
-                    <strong>{money.format(pool.executionCost)}</strong>
-                  </div>
-                  <div>
-                    <span>REJECTED HANDLE</span>
-                    <strong>{money.format(pool.rejectedHandle)}</strong>
-                  </div>
-                </section>
-
-                {pool.status === "SETTLED" && (
-                  <button
-                    className="viewSettlementButton"
-                    onClick={() => setSettlementModalOpen(true)}
+          <div className="marketWorkspace">
+            <section className="poolCard">
+              <button
+                className="poolHeader"
+                onClick={() => setPoolExpanded((value) => !value)}
+              >
+                <div className="poolIdentity">
+                  <span
+                    className={
+                      pool.status === "SETTLED" ? "settledBadge" : "openBadge"
+                    }
                   >
-                    View final settlement
-                  </button>
-                )}
+                    {pool.status === "SETTLED"
+                      ? "✓ SETTLED"
+                      : "● ACCEPTING BETS"}
+                  </span>
+                  <h3>Pool stats</h3>
+                  <small>
+                    Ball in net 57:55 · Decision 59:45 · Outcome: {outcomeText}
+                  </small>
+                </div>
+                <div className="poolResult">
+                  <span>
+                    {pool.status === "SETTLED" ? "EVENT P&L" : "WORST-CASE P&L"}
+                  </span>
+                  <strong className={eventProfit >= 0 ? "wonText" : "lostText"}>
+                    {signedMoney(eventProfit)}
+                  </strong>
+                  <small>
+                    {poolExpanded ? "Hide details ↑" : "Show details ↓"}
+                  </small>
+                </div>
+              </button>
+
+              {poolExpanded && (
+                <div className="poolBody">
+                  <div className="poolStatRow">
+                    <article>
+                      <span>TOTAL POOL</span>
+                      <strong>{money.format(pool.acceptedHandle)}</strong>
+                      <small>{pool.acceptedBets} accepted bets</small>
+                    </article>
+                    <article>
+                      <span>CURRENT LIABILITY</span>
+                      <strong>
+                        {money.format(
+                          Math.max(pool.payoutIfGoal, pool.payoutIfNoGoal),
+                        )}
+                      </strong>
+                      <small>
+                        {(acceptanceRate * 100).toFixed(1)}% accepted
+                      </small>
+                    </article>
+                  </div>
+                  <div className="marketTable">
+                    <div className="tableHeader">
+                      <span>MARKET</span>
+                      <span>LIVE ODDS</span>
+                      <span>POOL AMOUNT</span>
+                      <span>HEDGE PLACED</span>
+                      <span>RESULT</span>
+                    </div>
+                    <div>
+                      <strong>Goal confirmed</strong>
+                      <strong className="liveOddsValue">
+                        {pool.goalOdds ? pool.goalOdds.toFixed(2) : "—"}
+                      </strong>
+                      <span className="moneyCell">
+                        {money.format(snapshot.settlement.userGoalBets.amount)}
+                        <small>
+                          {snapshot.settlement.userGoalBets.count} bets
+                        </small>
+                      </span>
+                      <span className="moneyCell">
+                        {money.format(
+                          snapshot.settlement.polymarketGoalHedges.amount,
+                        )}
+                        <small>
+                          {snapshot.settlement.polymarketGoalHedges.count}{" "}
+                          orders
+                        </small>
+                      </span>
+                      <span
+                        className={
+                          pool.outcome === "GOAL" ? "wonText" : "lostText"
+                        }
+                      >
+                        {pool.outcome === null
+                          ? "Open"
+                          : pool.outcome === "GOAL"
+                            ? "Won ✓"
+                            : "Lost"}
+                      </span>
+                    </div>
+                    <div>
+                      <strong>No Goal overturned</strong>
+                      <strong className="liveOddsValue">
+                        {pool.noGoalOdds ? pool.noGoalOdds.toFixed(2) : "—"}
+                      </strong>
+                      <span className="moneyCell">
+                        {money.format(
+                          snapshot.settlement.userNoGoalBets.amount,
+                        )}
+                        <small>
+                          {snapshot.settlement.userNoGoalBets.count} bets
+                        </small>
+                      </span>
+                      <span className="moneyCell">
+                        {money.format(
+                          snapshot.settlement.polymarketNoGoalHedges.amount,
+                        )}
+                        <small>
+                          {snapshot.settlement.polymarketNoGoalHedges.count}{" "}
+                          orders
+                        </small>
+                      </span>
+                      <span
+                        className={
+                          pool.outcome === "NO_GOAL" ? "wonText" : "lostText"
+                        }
+                      >
+                        {pool.outcome === null
+                          ? "Open"
+                          : pool.outcome === "NO_GOAL"
+                            ? "Won ✓"
+                            : "Lost"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {pool.status === "SETTLED" && (
+                    <button
+                      className="viewSettlementButton"
+                      onClick={() => setSettlementModalOpen(true)}
+                    >
+                      View final settlement
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="panel oddsPanel">
+              <div className="panelHeader">
+                <div>
+                  <span>POLYMARKET MARKET</span>
+                  <h3>{market.title}</h3>
+                  <small>
+                    Interpolated event-aligned observations · updates every
+                    second
+                  </small>
+                </div>
+                <div className="currentOdds">
+                  <span>
+                    <i className="argDot" />
+                    ARG <strong>{market.argProbability.toFixed(2)}%</strong>
+                  </span>
+                  <span>
+                    <i className="egyDot" />
+                    EGY <strong>{market.egyProbability.toFixed(2)}%</strong>
+                  </span>
+                </div>
               </div>
-            )}
-          </section>
+              <div className="seriesToggle">
+                {(["ALL", "ARG", "EGY"] as Series[]).map((item) => (
+                  <button
+                    key={item}
+                    className={series === item ? "active" : ""}
+                    onClick={() => setSeries(item)}
+                  >
+                    {item === "ALL" ? "Both" : item}
+                  </button>
+                ))}
+              </div>
+              <OddsChart
+                series={series}
+                history={market.history}
+                outcome={pool.outcome}
+              />
+            </section>
+          </div>
         </section>
 
         <div className="lowerGrid">
