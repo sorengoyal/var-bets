@@ -79,9 +79,12 @@ export class CronService {
         });
 
         if (event.Action === 'goal') {
-          await this.handleGoalEvent(fixture.id, event.Data, event.Participant ?? 0);
-        }
-        else if (event.Action === 'var') {
+          await this.handleGoalEvent(
+            fixture.id,
+            event.Data,
+            event.Participant ?? 0,
+          );
+        } else if (event.Action === 'var') {
           await this.handleVarStart(fixture.id, event.Data);
         } else if (event.Action === 'var_end') {
           await this.handleVarEnd(fixture.id, event.Data);

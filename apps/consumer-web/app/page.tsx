@@ -82,6 +82,7 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [poolAmount, setPoolAmount] = useState(0);
   const [activePoolId, setActivePoolId] = useState<number | null>(null);
+  const [poolRevealStage, setPoolRevealStage] = useState<"hidden" | "loading" | "revealed">("hidden");
   const [bets, setBets] = useState<BetRecord[]>([]);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [demoWalletConnected, setDemoWalletConnected] = useState(false);
@@ -273,6 +274,18 @@ export default function Home() {
       setToast("Market closed automatically: NO GOAL");
     }
   }, [bets, settled, usdcBalance]);
+
+  // Pool reveal: loading card → flash animation
+  useEffect(() => {
+    if (!goalOccurred) {
+      setPoolRevealStage("hidden");
+      return;
+    }
+    // Goal occurred — always show loading first, then reveal
+    setPoolRevealStage("loading");
+    const timer = setTimeout(() => setPoolRevealStage("revealed"), 500);
+    return () => clearTimeout(timer);
+  }, [goalOccurred]);
 
   async function placeBet(side: Side) {
     if (!walletConnected || !walletAddress || !validStake || !acceptingBets || activePoolId == null)
@@ -475,8 +488,19 @@ export default function Home() {
           </div>
         </section>
 
-        {goalOccurred && activePoolId != null && (
-          <section className={`featuredPool ${settled ? "resolved" : ""}`}>
+        {goalOccurred && poolRevealStage === "loading" && (
+          <section className="featuredPool loading">
+            <div className="poolTopline">
+              <span>CONNECTING</span>
+            </div>
+            <h3>Syncing with pool...</h3>
+            <p>Waiting for the backend to confirm the betting pool.</p>
+            <div className="poolPulse" />
+          </section>
+        )}
+
+        {goalOccurred && poolRevealStage === "revealed" && activePoolId != null && (
+          <section className={`featuredPool poolFlash ${settled ? "resolved" : ""}`}>
             <div className="poolTopline">
               <span>{settled ? "RESOLVED POOL" : "ACTIVE POOL"}</span>
               <strong>{money.format(poolAmount)} USDC</strong>

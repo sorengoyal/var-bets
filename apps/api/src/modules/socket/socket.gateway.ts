@@ -1,9 +1,9 @@
-import { WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
-import { Server } from "socket.io";
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
   },
 })
 export class SocketGateway {
@@ -11,6 +11,6 @@ export class SocketGateway {
   server!: Server;
 
   broadcastSimulationReset(): void {
-    this.server.emit("simulationReset", {});
+    this.server.emit('simulationReset', {});
   }
 }
