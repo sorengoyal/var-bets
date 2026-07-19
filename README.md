@@ -2,7 +2,8 @@
 
 Live prediction markets for football VAR reviews. Place bets on whether a VAR decision will confirm or overturn an on-field call — all in real-time with video-synced odds.
 
-Built as a hackathon prototype on the **TxLINE World Cup** free tier (Solana devnet), using a centralized DB-driven approach for rapid iteration.
+Built as a hackathon prototype on the **TxLINE World Cup** free tier (Solana Mainnet).
+Transaction for token creation - https://solscan.io/tx/5C4E4mdNR2yyE9u5dKCYK8FDy3JUYTPB9YpiZaQ2NAyM4BYJG69Q7uQcpNCUypXpFdPkcbcpPLKizYm3YMZCvytW
 
 ## Architecture
 
@@ -12,7 +13,7 @@ Built as a hackathon prototype on the **TxLINE World Cup** free tier (Solana dev
 | Backend API | `apps/api` | 3000 | NestJS + TypeORM + PostgreSQL |
 | Consumer UI | `apps/consumer-web` | 3001 | Next.js + Phantom Wallet |
 
-**TxLINE stream is mocked** via `apps/mock-service` — a virtual clock replays pre-recorded fixture and score events. This lets us **reset and replay** the full VAR lifecycle (goal → review → decision → payout) on demand for demo purposes.
+**TxLINE stream is mocked** via `apps/mock-service` — a virtual clock replays pre-recorded fixture and score events. The original score stream for the Argentina Vs Egypt was missing a "goal" event which was needed for our demo. The mock service lets us **reset and replay** the full VAR lifecycle (goal → review → decision → payout) on demand for demo purposes.
 
 The backend polls the mock service every 10 seconds, creating pools on goal events and resolving them on VAR decisions. Real-time updates flow to the frontend via Socket.IO (`poolUpdated`, `payoutExecuted`).
 
